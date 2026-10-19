@@ -1,4 +1,4 @@
-# Render Blueprint: the Atria API (FastAPI) on Render's free plan.
+# Render Blueprint: the Atria API (FastAPI) on Render's free plan. Data lives in Tiger Data.
 # Render dashboard -> New -> Blueprint -> this repo. Values marked sync: false are
 # asked for once in the dashboard and never stored in git.
 services:
@@ -11,10 +11,6 @@ services:
     dockerContext: .
     healthCheckPath: /health
     envVars:
-      - key: SUPABASE_URL
-        sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL

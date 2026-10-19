@@ -27,16 +27,13 @@ Open http://localhost:3000. Use `localhost`, not `127.0.0.1`: Next's dev server 
 5. **Ask Atria**: "Who should be re-checked next?" The answer cites tickets, readings and times.
 6. Live: a judge checks in at `/checkin` on their phone, the nurse sets priority, and their ticket shows their place in line.
 
-## 1. Supabase
-In the SQL Editor (or `psql "$ATRIA_DATABASE_URL" -f ...`), run in order:
-
-1. `supabase/migrations/202610190001_er_reassessment.sql` - `patients`, `events`, `audit_log`
-2. `supabase/migrations/202610190002_demo_seed.sql` - original 4-patient seed (optional; Reset replaces it)
-3. `supabase/migrations/202610190003_demo_runs.sql` - `atria_demo_runs`, run/idempotency columns
-4. `supabase/migrations/202610190004_event_key_unique.sql` - unique keys used for idempotent writes
-5. `supabase/migrations/202610190005_checkins.sql` - `checkins` for the live waiting room; makes `patients.initial_triage` nullable (live patients have no priority until staff set one)
-
-All are additive and safe to repeat; existing `er_*` tables are untouched. Put the Project URL and a backend secret / service_role key in `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`.
+## 1. Database: Tiger Data
+Tiger (Postgres + TimescaleDB) is the system of record. Put the service URL in `TIGER_DATABASE_URL` and, if the URL has no password, the password in `TIGER_PASSWORD` (both in `.env.local`). Then create the tables once (safe to repeat):
+```
+PGPASSWORD="$TIGER_PASSWORD" psql "$TIGER_DATABASE_URL" -f tiger/app_schema.sql   # patients, events, audit_log, demo runs, checkins
+PGPASSWORD="$TIGER_PASSWORD" psql "$TIGER_DATABASE_URL" -f tiger/schema.sql       # vitals hypertable + aggregates for trends
+```
+`ATRIA_STORE` overrides the choice: `memory` (offline, used by tests), `tiger`, or `supabase` (legacy; the `supabase/migrations` files still work).
 
 ## 2. Gemini
 Key from aistudio.google.com/apikey in `GEMINI_API_KEY`. Default model `gemini-3.5-flash`, then `gemini-flash-latest` (override with `GEMINI_MODEL`). Calls time out after 12s with no SDK retries; on failure, or if the answer cites a number not in the evidence, Ask Atria returns a labeled deterministic fallback built from the same evidence.

@@ -31,19 +31,29 @@ log = logging.getLogger("atria")
 
 
 def make_store():
+    """Tiger Data is the system of record. ATRIA_STORE=memory|supabase|tiger overrides."""
     mode = os.environ.get("ATRIA_STORE", "").lower()
+    tiger_url = os.environ.get("TIGER_DATABASE_URL")
     url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-    if mode == "memory" or (mode != "supabase" and not (url and key)):
+    if mode == "memory":
         return MemoryStore()
-    if not (url and key):
-        raise RuntimeError("ATRIA_STORE=supabase needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
-    return SupabaseStore(url, key)
+    if mode == "tiger" or (mode == "" and tiger_url):
+        if not tiger_url:
+            raise RuntimeError("ATRIA_STORE=tiger needs TIGER_DATABASE_URL")
+        from pgstore import PostgresStore
+
+        return PostgresStore(tiger_url)
+    if mode == "supabase" or (url and key):
+        if not (url and key):
+            raise RuntimeError("ATRIA_STORE=supabase needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
+        return SupabaseStore(url, key)
+    return MemoryStore()
 
 
 tiger_mirror, tiger_analytics = tiger.connect(os.environ.get("TIGER_DATABASE_URL"))
 store = make_store()
 if tiger_mirror:
-    # Supabase stays the system of record; vitals events are also copied to Tiger.
+    # Vitals events are also copied to the Tiger vitals hypertable for the trends view.
     store = tiger_mirror(store)
 engine = DemoEngine(store)
 live = LiveWaitingRoom(store)
@@ -104,6 +114,9 @@ async def missing_table(request, exc):
     if "PGRST205" in str(exc) and "checkins" in str(exc):
         return JSONResponse(status_code=503, content={
             "detail": "Database not set up for check-ins: run supabase/migrations/202610190005_checkins.sql"})
+    if type(exc).__name__ == "UndefinedTable":
+        return JSONResponse(status_code=503, content={
+            "detail": "Tiger database not set up: run tiger/app_schema.sql"})
     log.exception("unhandled error", exc_info=exc)
     return JSONResponse(status_code=500, content={"detail": f"server error: {type(exc).__name__}"})
 
