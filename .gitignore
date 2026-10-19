@@ -1,0 +1,22 @@
+# Local credentials and environment variants
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+*.pem
+*.key
+# Local databases, interpreter caches and generated output
+var/
+*.sqlite3
+*.sqlite3-*
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+node_modules/
+dist/
+*.log
+.DS_Store
