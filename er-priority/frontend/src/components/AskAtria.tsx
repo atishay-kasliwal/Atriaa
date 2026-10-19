@@ -117,13 +117,7 @@ export default function AskAtria({ queue, patientId, onPatientChange }: AskAtria
                                 ) : t.answer ? (
                                     <>
                                         <div className="ask-answer">{t.answer.answer}</div>
-                                        <p className="dashboard-patient">
-                                            <span className={`provider-badge ${t.answer.provider}`}>
-                                                {t.answer.provider === "gemini" ? `Gemini · ${t.answer.model}` : "Sourced fallback"}
-                                            </span>{" "}
-                                            Queue {t.answer.queue_version} · as of {clock(t.answer.as_of)}
-                                            {t.answer.notice ? ` · ${t.answer.notice}` : ""}
-                                        </p>
+                                        <p className="dashboard-patient">Based on readings as of {clock(t.answer.as_of)}</p>
                                     </>
                                 ) : (
                                     <p className="dashboard-patient">Reading the waiting room…</p>
