@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Atria - ER Reassessment Demo</title>
+<style>
+  body { font-family: -apple-system, Arial, sans-serif; background: #0f1115; color: #e8e8e8; margin: 0; }
+  header { background: #16181f; padding: 14px 24px; border-bottom: 1px solid #2a2d36; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .tag { color: #f0b429; font-size: 12px; letter-spacing: 0.08em; }
+  main { padding: 20px 24px; display: flex; gap: 20px; }
+  .panel { background: #16181f; border: 1px solid #2a2d36; border-radius: 8px; padding: 16px; }
+  #queuePanel { flex: 2; }
+  #detailPanel { flex: 1; min-width: 320px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #22242c; }
+  th { color: #9a9ca3; font-weight: 500; }
+  tr.row { cursor: pointer; }
+  tr.row:hover { background: #1c1f28; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge.persistent_change { background: #3a1f1f; color: #ff8080; }
+  .badge.transient_or_mixed { background: #3a301f; color: #f0c060; }
+  .badge.stable { background: #1f3a26; color: #7fd49a; }
+  .badge.insufficient_data { background: #2a2d36; color: #9a9ca3; }
+  button { background: #2a2d36; color: #e8e8e8; border: 1px solid #3a3d46; border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; margin: 2px 4px 2px 0; }
+  button:hover { background: #3a3d46; }
+  #askBox { margin-top: 16px; }
+  #askInput { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 6px; border: 1px solid #3a3d46; background: #0f1115; color: #e8e8e8; margin-bottom: 8px; }
+  #askAnswer { font-size: 13px; color: #cfd2d8; white-space: pre-wrap; margin-top: 10px; line-height: 1.5; }
+  .muted { color: #9a9ca3; font-size: 12px; }
+  .delta-row td { font-size: 12px; }
+  #nextEventBtn { background: #2d4a2d; border-color: #3d6a3d; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ATRIA &middot; Emergency Department &middot; Live Waiting Room</h1>
+  <span class="tag">SYNTHETIC DEMO &mdash; not a medical device, not validated for clinical use</span>
+</header>
+
+<main>
+  <div id="queuePanel" class="panel">
+    <h3>Attention Queue</h3>
+    <p class="muted">Ranked by change since intake, not initial severity. Intake labels never change automatically.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Bay</th><th>Intake</th><th>Current</th><th>Waiting</th><th>Trajectory</th><th>Last change</th>
+        </tr>
+      </thead>
+      <tbody id="queueBody"></tbody>
+    </table>
+  </div>
+
+  <div id="detailPanel" class="panel">
+    <h3>Patient detail</h3>
+    <div id="detailContent" class="muted">Select a patient from the queue.</div>
+
+    <div id="askBox">
+      <h4>Ask Atria</h4>
+      <input id="askInput" type="text" placeholder="e.g. Why did Bay 4 move above Bay 7?" />
+      <button onclick="askAtria()">Ask</button>
+      <div id="askAnswer"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API_BASE = "http://localhost:8000";
+let selectedPatientId = null;
+
+async function loadQueue() {
+  const res = await fetch(`${API_BASE}/queue`);
+  const data = await res.json();
+  const body = document.getElementById("queueBody");
+  body.innerHTML = "";
+  data.queue.forEach(p => {
+    const tr = document.createElement("tr");
+    tr.className = "row";
+    tr.onclick = () => selectPatient(p.id);
+    tr.innerHTML = `
+      <td>${p.attention_position}</td>
+      <td>${p.bay}</td>
+      <td>ESI ${p.initial_triage}<br><span class="muted">${p.chief_complaint || ""}</span></td>
+      <td>HR ${p.current?.hr ?? "-"} / SpO2 ${p.current?.spo2 ?? "-"}% / pain ${p.current?.pain ?? "-"}</td>
+      <td>${p.waiting_minutes} min</td>
+      <td><span class="badge ${p.trajectory}">${p.trajectory.replace("_", " ")}</span></td>
+      <td>${p.last_change ? new Date(p.last_change).toLocaleTimeString() : "-"}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+async function selectPatient(id) {
+  selectedPatientId = id;
+  const res = await fetch(`${API_BASE}/patient/${id}/evidence`);
+  const p = await res.json();
+  const d = document.getElementById("detailContent");
+  d.innerHTML = `
+    <p><strong>${p.bay}</strong> &mdash; ESI ${p.initial_triage} (intake, unchanged)<br>
+    <span class="muted">${p.chief_complaint || ""}</span></p>
+    <table>
+      <tr><th></th><th>Intake</th><th>Current</th><th>Delta</th></tr>
+      <tr class="delta-row"><td>HR</td><td>${p.intake?.hr ?? "-"}</td><td>${p.current?.hr ?? "-"}</td><td>${fmtDelta(p.deltas?.hr)}</td></tr>
+      <tr class="delta-row"><td>SpO2</td><td>${p.intake?.spo2 ?? "-"}%</td><td>${p.current?.spo2 ?? "-"}%</td><td>${fmtDelta(p.deltas?.spo2)}</td></tr>
+      <tr class="delta-row"><td>Pain</td><td>${p.intake?.pain ?? "-"}</td><td>${p.current?.pain ?? "-"}</td><td>${fmtDelta(p.deltas?.pain)}</td></tr>
+    </table>
+    <p><span class="badge ${p.trajectory}">${p.trajectory.replace("_", " ")}</span></p>
+    <h4>Timeline</h4>
+    <div class="muted">${p.timeline.map(e => `${new Date(e.observed_at).toLocaleTimeString()} - HR ${e.hr ?? "-"}, SpO2 ${e.spo2 ?? "-"}%, pain ${e.pain ?? "-"}${e.note ? " - " + e.note : ""}`).join("<br>")}</div>
+    <h4>Actions</h4>
+    <button onclick="doAction('acknowledge')">Acknowledge</button>
+    <button onclick="doAction('request_reassessment')">Request Reassessment</button>
+    <button onclick="doAction('resolve')">Resolve</button>
+    <h4>Audit log</h4>
+    <div class="muted">${p.audit_log.length ? p.audit_log.map(a => `${new Date(a.created_at).toLocaleTimeString()} - ${a.actor}: ${a.action}${a.reason ? " (" + a.reason + ")" : ""}`).join("<br>") : "No actions yet."}</div>
+  `;
+}
+
+function fmtDelta(v) {
+  if (v === null || v === undefined) return "-";
+  return (v > 0 ? "+" : "") + v;
+}
+
+async function doAction(action) {
+  if (!selectedPatientId) return;
+  const reason = prompt(`Reason for "${action}" (required for audit log):`, "");
+  if (reason === null) return;
+  await fetch(`${API_BASE}/patient/${selectedPatientId}/action`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ actor: "Nurse (demo)", action, reason }),
+  });
+  selectPatient(selectedPatientId);
+}
+
+async function askAtria() {
+  const question = document.getElementById("askInput").value.trim();
+  if (!question) return;
+  const answerEl = document.getElementById("askAnswer");
+  answerEl.textContent = "Thinking...";
+  const res = await fetch(`${API_BASE}/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ question, patient_id: selectedPatientId }),
+  });
+  const data = await res.json();
+  answerEl.textContent = data.answer;
+}
+
+loadQueue();
+setInterval(loadQueue, 4000);
+</script>
+</body>
+</html>
