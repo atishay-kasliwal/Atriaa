@@ -32,11 +32,8 @@ export default function AskAtria({ queue, patientId, onPatientChange }: AskAtria
     useEffect(() => {
         if (autoAsked.current || !queue || !queue.queue.length) return;
         autoAsked.current = true;
-        (async () => {
-            for (const q of ["Who changed most since check-in?", "Who should be re-checked next?"]) {
-                await ask(q);
-            }
-        })();
+        // In parallel: each Gemini answer takes several seconds.
+        ["Who changed most since check-in?", "Who should be re-checked next?"].forEach((q) => ask(q));
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [queue]);
 
