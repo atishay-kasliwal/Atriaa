@@ -1,0 +1,54 @@
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Next.js build output
+.next/
+**/.next/
+out/
+**/out/
+
+# Production builds
+build/
+dist/
+coverage/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Python virtual environments
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local databases and runtime files
+*.sqlite
+*.sqlite3
+*.db
+*.log
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# TypeScript and tooling caches
+*.tsbuildinfo
+.eslintcache
+
+# Temporary files
+tmp/
+temp/
+*.tmp
