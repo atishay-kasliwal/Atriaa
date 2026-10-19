@@ -13,7 +13,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-      <html lang="en">
+      // Browser extensions (e.g. autofill) add attributes to <html> before React loads.
+      <html lang="en" suppressHydrationWarning>
       <body>{children}</body>
       </html>
   );
