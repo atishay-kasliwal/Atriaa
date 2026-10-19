@@ -1,6 +1,7 @@
 "use client";
 
 import { clock } from "../lib/api";
+import NearbyERs from "./NearbyERs";
 import type { BedBoard as Board } from "../types";
 
 type Props = {
@@ -83,6 +84,7 @@ export default function BedBoard({ board, busy, onAssign, onDischarge }: Props) 
                     )
                 )}
             </div>
+            {board.free === 0 && <NearbyERs />}
         </section>
     );
 }
