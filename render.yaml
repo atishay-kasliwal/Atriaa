@@ -1,0 +1,29 @@
+# Render Blueprint: the Atria API (FastAPI) on Render's free plan.
+# Render dashboard -> New -> Blueprint -> this repo. Values marked sync: false are
+# asked for once in the dashboard and never stored in git.
+services:
+  - type: web
+    name: atria-api
+    runtime: docker
+    plan: free
+    branch: hack-er-demo
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash
+      - key: SENTRY_DSN
+        sync: false
+      - key: SENTRY_ENVIRONMENT
+        value: production
+      - key: TIGER_DATABASE_URL
+        sync: false
+      - key: TIGER_PASSWORD
+        sync: false
