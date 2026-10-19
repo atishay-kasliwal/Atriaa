@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Atria - ER Reassessment Demo</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+<style>
+  :root {
+    --bg: #0f1115; --panel: #16181f; --line: #2a2d36; --line2: #22242c; --text: #e8e8e8; --muted: #9a9ca3;
+    --red: #ff8080; --red-bg: #3a1f1f; --amber: #f0c060; --amber-bg: #3a301f; --green: #7fd49a; --green-bg: #1f3a26;
+    --blue: #8ab4ff; --blue-bg: #1f2a3a; --accent: #f0b429;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, "Segoe UI", Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; font-size: 13px; }
+  header { background: var(--panel); padding: 12px 20px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: center; }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; letter-spacing: .02em; }
+  .tag { color: var(--accent); font-size: 11px; letter-spacing: .08em; font-weight: 600; }
+  nav { margin-left: auto; display: flex; gap: 4px; }
+  nav button.active { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
+  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 10px 20px; border-bottom: 1px solid var(--line); background: #13151b; }
+  .bar .sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+  main { padding: 16px 20px; display: grid; grid-template-columns: minmax(0, 3fr) minmax(320px, 2fr); gap: 16px; }
+  @media (max-width: 980px) { main { grid-template-columns: 1fr; } }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px; min-width: 0; }
+  h3 { margin: 0 0 4px; font-size: 14px; } h4 { margin: 16px 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line2); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+  .scroll { overflow-x: auto; }
+  tr.row { cursor: pointer; transition: background .3s; }
+  tr.row:hover { background: #1c1f28; }
+  tr.row.selected { background: #1d2333; }
+  tr.row.flash { background: #2a2333; }
+  .pos { font-size: 16px; font-weight: 700; width: 46px; }
+  .move { font-size: 11px; font-weight: 600; display: block; }
+  .move.up { color: var(--red); } .move.down { color: var(--muted); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .persistent_change { background: var(--red-bg); color: var(--red); }
+  .mixed_change, .transient_change { background: var(--amber-bg); color: var(--amber); }
+  .stable { background: var(--green-bg); color: var(--green); }
+  .insufficient_data { background: var(--line); color: var(--muted); }
+  .esi { display: inline-block; border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; font-weight: 600; }
+  .flag { color: var(--red); font-weight: 700; font-size: 11px; }
+  .lowc { color: var(--amber); font-weight: 700; font-size: 11px; }
+  button { background: #2a2d36; color: var(--text); border: 1px solid #3a3d46; border-radius: 6px; padding: 6px 10px; font-size: 12px; cursor: pointer; }
+  button:hover:not(:disabled) { background: #3a3d46; }
+  button:disabled { opacity: .45; cursor: default; }
+  button.go { background: #2d4a2d; border-color: #3d6a3d; }
+  button.warn { background: #4a2d2d; border-color: #6a3d3d; }
+  button.chip { border-radius: 14px; padding: 4px 10px; font-size: 11px; color: var(--muted); }
+  button.on { border-color: var(--accent); color: var(--accent); }
+  input[type=text] { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #3a3d46; background: var(--bg); color: var(--text); font-size: 13px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .small { font-size: 11px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .spark { background: var(--bg); border: 1px solid var(--line2); border-radius: 6px; padding: 6px; }
+  .spark svg { width: 100%; height: 48px; display: block; }
+  .agent { border: 1px solid var(--line2); border-radius: 6px; padding: 8px; margin-bottom: 6px; }
+  .agent b { text-transform: capitalize; }
+  .agent ul { margin: 4px 0 0 16px; padding: 0; }
+  .banner { border-radius: 6px; padding: 8px 10px; margin: 10px 0; font-weight: 600; font-size: 12px; }
+  .banner.low { background: var(--amber-bg); color: var(--amber); }
+  .banner.signal { background: var(--red-bg); color: var(--red); }
+  .banner.ok { background: var(--green-bg); color: var(--green); }
+  .tl { border-left: 2px solid var(--line); margin-left: 4px; padding-left: 10px; }
+  .tl div { margin: 0 0 6px; position: relative; }
+  .tl div::before { content: ""; position: absolute; left: -15px; top: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+  .tl .report::before { background: var(--amber); } .tl .human_action::before { background: var(--blue); } .tl .intake::before { background: var(--green); }
+  .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .confirm { margin-top: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; display: none; }
+  .ok-msg { color: var(--green); } .err-msg { color: var(--red); }
+  #askAnswer { white-space: pre-wrap; line-height: 1.5; margin-top: 10px; }
+  .provider { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
+  .provider.gemini { background: var(--blue-bg); color: var(--blue); }
+  .provider.fallback { background: var(--amber-bg); color: var(--amber); }
+  #raleighView { display: none; padding: 20px; max-width: 1400px; margin: 0 auto; }
+  .hero { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 16px; }
+  .hero h2 { font-size: 22px; margin: 0 0 6px; font-weight: 650; letter-spacing: -.01em; }
+  .hero p { margin: 0; color: var(--muted); font-size: 13px; max-width: 640px; line-height: 1.5; }
+  .eyebrow { color: var(--accent); font-size: 11px; letter-spacing: .1em; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+  @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .stat b { font-size: 24px; display: block; font-variant-numeric: tabular-nums; }
+  .caps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+  @media (max-width: 980px) { .caps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 520px) { .caps { grid-template-columns: 1fr; } }
+  .cap { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .cap b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .cap span { color: var(--muted); font-size: 12px; line-height: 1.45; }
+  .cap i { font-style: normal; color: var(--accent); font-weight: 700; margin-right: 6px; }
+  .region { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; }
+  @media (max-width: 980px) { .region { grid-template-columns: 1fr; } }
+  #map { height: 520px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
+  .facList { max-height: 452px; overflow-y: auto; margin-top: 8px; }
+  .fac { padding: 8px 6px; border-bottom: 1px solid var(--line2); cursor: pointer; display: flex; gap: 10px; align-items: flex-start; }
+  .fac:hover { background: #1c1f28; }
+  .fac .dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 4px; flex: none; }
+  .fac b { display: block; font-weight: 550; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; color: var(--muted); font-size: 11px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .srcline { margin-top: 14px; }
+  .error { color: var(--red); }
+  .leaflet-container { background: #1a1d24; }
+</style>
+</head>
+<body>
+<header>
+  <h1>ATRIA &middot; Emergency Department &middot; Live Waiting Room</h1>
+  <span class="tag">SYNTHETIC DEMO &mdash; not a medical device, not validated for clinical use</span>
+  <nav>
+    <button id="tabBoard" class="active" onclick="showTab('board')">Waiting Room</button>
+    <button id="tabRaleigh" onclick="showTab('raleigh')">Region</button>
+  </nav>
+</header>
+
+<div id="boardView">
+  <div class="bar">
+    <button onclick="demo('reset')" title="Start a fresh synthetic run">Reset</button>
+    <button id="btnStart" class="go" onclick="demo('start')">Start</button>
+    <button id="btnPause" onclick="demo('pause')">Pause</button>
+    <button id="btnNext" onclick="demo('next')">Next Event</button>
+    <span class="sep"></span>
+    <span class="muted">Speed</span>
+    <button class="chip" data-speed="1" onclick="setSpeed(1)">1x</button>
+    <button class="chip" data-speed="2" onclick="setSpeed(2)">2x</button>
+    <button class="chip" data-speed="5" onclick="setSpeed(5)">5x</button>
+    <span class="sep"></span>
+    <span id="runInfo" class="muted">Connecting&hellip;</span>
+  </div>
+
+  <main>
+    <section class="panel">
+      <h3>Atria Attention Queue</h3>
+      <p class="muted">Who may need reassessment next. Ranked by change since intake; separate from the official triage queue. Intake ESI labels are set by humans and never change automatically.</p>
+      <div class="scroll">
+        <table>
+          <thead><tr><th>Attention</th><th>Patient</th><th>Intake</th><th>Current state</th><th>Waiting</th><th>Trajectory</th><th>Last change</th></tr></thead>
+          <tbody id="queueBody"></tbody>
+        </table>
+      </div>
+      <p id="queueError" class="error"></p>
+    </section>
+
+    <section class="panel">
+      <div id="detailContent" class="muted">Select a patient to review evidence.</div>
+
+      <h4>Ask Atria</h4>
+      <div class="actions" id="suggestions"></div>
+      <div style="display:flex; gap:6px; margin-top:8px;">
+        <input id="askInput" type="text" placeholder="e.g. Why did Bay 4 move above Bay 7?" onkeydown="if(event.key==='Enter')askAtria()" />
+        <button onclick="askAtria()">Ask</button>
+      </div>
+      <div id="askMeta" class="muted small" style="margin-top:6px;"></div>
+      <div id="askAnswer"></div>
+    </section>
+  </main>
+</div>
+
+<div id="raleighView">
+  <div class="hero">
+    <div>
+      <div class="eyebrow">Atria · Raleigh region</div>
+      <h2>Every waiting room, watched after triage.</h2>
+      <p>Triage captures how a patient looks at the door. Atria keeps watching while they wait: it reads each new vital and observation,
+        flags sustained change, and tells the charge nurse who may need a second look, with the evidence. These are the
+        emergency departments across the Triangle that Atria is built to run in.</p>
+    </div>
+    <button class="go" onclick="showTab('board')">Open the waiting room &rarr;</button>
+  </div>
+
+  <div class="stats" id="raleighStats"></div>
+
+  <div class="caps">
+    <div class="cap"><b><i>01</i>Watches after triage</b><span>Re-reads heart rate, SpO₂, pain and nurse observations as they arrive, for every patient in the waiting room.</span></div>
+    <div class="cap"><b><i>02</i>Separates signal from noise</b><span>Sustained change across signals rises in the queue. One-off spikes are marked transient and settle back.</span></div>
+    <div class="cap"><b><i>03</i>Explains every ranking</b><span>Ask Atria answers in plain language and cites the actual values, times and queue version.</span></div>
+    <div class="cap"><b><i>04</i>Keeps nurses in control</b><span>Intake ESI never changes automatically. Every reassessment request is confirmed and audited.</span></div>
+  </div>
+
+  <div class="region">
+    <div>
+      <div id="map"></div>
+      <div class="legend">
+        <span><i class="dot" style="background:#ff8080"></i>Trauma center</span>
+        <span><i class="dot" style="background:#8ab4ff"></i>Hospital ED</span>
+        <span><i class="dot" style="background:#7fd49a"></i>Freestanding ED</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Emergency departments</h3>
+      <div class="actions" id="facFilters"></div>
+      <div class="facList" id="raleighBody"></div>
+    </div>
+  </div>
+  <p class="muted small srcline" id="raleighSource"></p>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script>
+const params = new URLSearchParams(location.search);
+const API_BASE = params.get("api") || (location.protocol.startsWith("http") && location.port !== "5500" ? location.origin : "http://localhost:8000");
+const SUGGESTIONS = [
+  "Who should be reassessed next?",
+  "What changed with Bay 4?",
+  "Why did Bay 4 move above Bay 7?",
+  "Who changed most since intake?",
+  "Has anyone with lower initial severity started changing?",
+];
+const LABEL = {
+  persistent_change: "▲ persistent change", mixed_change: "◆ mixed change", transient_change: "◇ transient change",
+  stable: "● stable", insufficient_data: "○ intake only",
+};
+const UNITS = { hr: "bpm", spo2: "%", pain: "/10" };
+const NAMES = { hr: "Heart rate", spo2: "SpO2", pain: "Reported pain" };
+
+let selectedId = null, lastVersion = null, detailVersion = null, run = null, pendingAction = null;
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const hhmm = iso => iso ? new Date(iso).toISOString().slice(11, 16) : "-";
+const delta = v => v === null || v === undefined ? "-" : (v > 0 ? "+" : "") + v;
+const badge = t => `<span class="badge ${esc(t)}">${esc(LABEL[t] || t)}</span>`;
+
+async function api(path, opts) {
+  const res = await fetch(API_BASE + path, opts);
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.detail || `HTTP ${res.status}`);
+  return body;
+}
+const post = (path, body) => api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body || {}) });
+
+// ---------- replay ----------
+
+async function demo(action) {
+  try { renderRun(await post(`/demo/${action}`)); } catch (e) { setError(e); }
+  if (action === "reset") { selectedId = null; document.getElementById("detailContent").innerHTML = '<span class="muted">Select a patient to review evidence.</span>'; document.getElementById("askAnswer").textContent = ""; document.getElementById("askMeta").textContent = ""; }
+  loadQueue();
+}
+async function setSpeed(s) { try { renderRun(await post("/demo/speed", { speed: s })); } catch (e) { setError(e); } }
+
+function renderRun(r, asOf, version) {
+  run = r;
+  const info = document.getElementById("runInfo");
+  if (!r || r.status === "needs_reset") {
+    info.innerHTML = '<span class="error">No active synthetic run. Press Reset.</span>';
+  } else {
+    info.innerHTML = `Run <b>${esc(r.run_id)}</b> · ${esc(r.status)} · event ${r.cursor}/${r.total_events}` +
+      (asOf ? ` · as of <b>${hhmm(asOf)} UTC</b>` : "") + (version ? ` · queue ${esc(version)}` : "") +
+      ` · store ${esc(r.store)}`;
+  }
+  const running = r && r.status === "running", done = r && r.status === "complete", none = !r || r.status === "needs_reset";
+  document.getElementById("btnStart").disabled = running || done || none;
+  document.getElementById("btnPause").disabled = !running;
+  document.getElementById("btnNext").disabled = running || done || none;
+  document.querySelectorAll("[data-speed]").forEach(b => b.classList.toggle("on", r && Number(b.dataset.speed) === r.speed));
+}
+
+// ---------- board ----------
+
+function setError(e) { document.getElementById("queueError").textContent = e ? `Backend error: ${e.message}` : ""; }
+
+async function loadQueue() {
+  let data;
+  try { data = await api("/queue"); setError(null); }
+  catch (e) { setError(e); return; }
+  renderRun(data.run, data.as_of, data.queue_version);
+  const changed = data.queue_version !== lastVersion;
+  lastVersion = data.queue_version;
+  const body = document.getElementById("queueBody");
+  body.innerHTML = data.queue.map(p => {
+    const moved = p.previous_position ? p.previous_position - p.attention_position : 0;
+    const move = moved > 0 ? `<span class="move up">▲ ${moved}</span>` : moved < 0 ? `<span class="move down">▼ ${-moved}</span>` : "";
+    const c = p.current || {};
+    return `<tr class="row ${p.id === selectedId ? "selected" : ""} ${changed && moved > 0 ? "flash" : ""}" onclick="selectPatient('${esc(p.id)}')">
+      <td class="pos">${p.attention_position}${move}</td>
+      <td><b>${esc(p.bay)}</b>${p.reassessment_signal ? '<br><span class="flag">⚑ REASSESSMENT SIGNAL</span>' : ""}${p.low_consensus ? '<br><span class="lowc">◆ LOW CONSENSUS</span>' : ""}</td>
+      <td><span class="esi">ESI ${esc(p.initial_triage)}</span><br><span class="muted">${esc(p.chief_complaint)}</span></td>
+      <td>HR ${c.hr ?? "-"} · SpO2 ${c.spo2 ?? "-"}% · pain ${c.pain ?? "-"}<br><span class="muted">Δ HR ${delta(p.deltas?.hr)} · SpO2 ${delta(p.deltas?.spo2)} · pain ${delta(p.deltas?.pain)}</span></td>
+      <td>${p.waiting_minutes} min</td>
+      <td>${badge(p.trajectory)}<br><span class="muted small">${esc(p.ordering_reason)}</span></td>
+      <td>${hhmm(p.last_change)}</td></tr>`;
+  }).join("");
+  if (changed) setTimeout(() => body.querySelectorAll(".flash").forEach(r => r.classList.remove("flash")), 900);
+  if (selectedId && changed && !pendingAction) selectPatient(selectedId, true);
+}
+
+// ---------- detail ----------
+
+function spark(points, metric) {
+  if (!points.length) return `<div class="spark"><div class="muted small">${NAMES[metric]}: no data</div></div>`;
+  const vals = points.map(p => p.value), lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+  const W = 200, H = 48, pad = 6;
+  const xy = points.map((p, i) => [pad + (points.length === 1 ? (W - 2 * pad) / 2 : i * (W - 2 * pad) / (points.length - 1)), H - pad - (p.value - lo) / span * (H - 2 * pad)]);
+  const color = metric === "spo2" ? "var(--blue)" : metric === "hr" ? "var(--red)" : "var(--amber)";
+  const title = points.map(p => `${p.value}${UNITS[metric]} at ${hhmm(p.observed_at)}`).join(", ");
+  return `<div class="spark" title="${esc(title)}"><div class="small"><b>${NAMES[metric]}</b> <span class="muted">${vals.join(" → ")}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${esc(NAMES[metric] + ": " + title)}">
+      <polyline fill="none" stroke="${color}" stroke-width="2" points="${xy.map(p => p.join(",")).join(" ")}" />
+      ${xy.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="2.5" fill="${color}" />`).join("")}
+    </svg></div>`;
+}
+
+function agentCard(a) {
+  const status = a.status === "unavailable" ? '<span class="muted">unavailable</span>' : esc(a.status);
+  const items = (a.findings || []).length ? `<ul>${a.findings.map(f => `<li>${esc(f)}</li>`).join("")}</ul>` : `<div class="muted small">${esc(a.note || "No findings.")}</div>`;
+  return `<div class="agent"><b>${esc(a.agent.replace("_", " "))} agent</b> <span class="small">· ${status}</span>${a.method ? `<span class="muted small"> · ${esc(a.method)}</span>` : ""}${items}</div>`;
+}
+
+function consensusBanner(p) {
+  if (p.consensus === "low_consensus") return '<div class="banner low">LOW CONSENSUS — evidence is mixed; human review recommended</div>';
+  if (p.reassessment_signal) return `<div class="banner signal">⚑ Reassessment signal · ${esc(p.consensus.replace("_", " "))}</div>`;
+  return `<div class="banner ok">No reassessment signal · ${esc(p.consensus.replaceAll("_", " "))}</div>`;
+}
+
+function timelineItem(t) {
+  if (t.type === "human_action") return `<div class="human_action"><b>${esc(t.action.replace("_", " "))}</b> by ${esc(t.actor)}${t.reason ? ` — ${esc(t.reason)}` : ""} <span class="muted small">(wall clock ${new Date(t.at).toLocaleTimeString()})</span></div>`;
+  const vit = [t.hr != null ? `HR ${t.hr}` : "", t.spo2 != null ? `SpO2 ${t.spo2}%` : "", t.pain != null ? `pain ${t.pain}` : ""].filter(Boolean).join(", ");
+  return `<div class="${t.type}"><b>${hhmm(t.at)}</b> <span class="muted small">${t.type}</span> ${esc(vit)}${t.note ? ` — “${esc(t.note)}”` : ""}</div>`;
+}
+
+async function selectPatient(id, silent) {
+  selectedId = id;
+  let p;
+  try { p = await api(`/patient/${id}/evidence`); } catch (e) { if (!silent) setError(e); return; }
+  detailVersion = p.queue_version;
+  document.querySelectorAll("tr.row").forEach(r => r.classList.toggle("selected", r.getAttribute("onclick").includes(id)));
+  const i = p.intake || {}, c = p.current || {};
+  const row = m => `<tr><td>${NAMES[m]}</td><td>${i[m] ?? "-"}${i[m] != null ? UNITS[m] : ""}</td><td>${c[m] ?? "-"}${c[m] != null ? UNITS[m] : ""}</td><td><b>${delta(p.deltas?.[m])}</b>${p.deltas?.[m] != null ? (m === "spo2" ? " pts" : " " + UNITS[m].replace("/10", "")) : ""}</td></tr>`;
+  document.getElementById("detailContent").innerHTML = `
+    <h3>${esc(p.bay)} · ${badge(p.trajectory)}</h3>
+    <div class="muted">Intake <span class="esi">ESI ${esc(p.initial_triage)}</span> (human-entered, unchanged) · ${esc(p.chief_complaint)} · waiting ${p.waiting_minutes} min · attention #${p.attention_position}</div>
+    ${consensusBanner(p)}
+    <div class="actions">
+      <button onclick="document.getElementById('evidence').scrollIntoView({behavior:'smooth'})">Review Evidence</button>
+      <button onclick="document.getElementById('timeline').scrollIntoView({behavior:'smooth'})">Open Timeline</button>
+    </div>
+    <h4 id="evidence">Intake vs current</h4>
+    <table><tr><th></th><th>Intake ${hhmm(i.observed_at)}</th><th>Current ${hhmm(c.observed_at)}</th><th>Change</th></tr>${["hr", "spo2", "pain"].map(row).join("")}</table>
+    <div class="grid3" style="margin-top:8px;">${["hr", "spo2", "pain"].map(m => spark(p.series[m], m)).join("")}</div>
+    <h4>Agent findings</h4>
+    ${["vital", "trend", "context", "open_model"].map(k => agentCard(p.agents[k])).join("")}
+    <div class="muted small">${p.reasons.map(esc).join(" · ")}</div>
+    <h4 id="timeline">Timeline</h4>
+    <div class="tl">${p.timeline.map(timelineItem).join("")}</div>
+    <h4>Human review</h4>
+    <div class="actions">
+      <button onclick="startAction('acknowledge')">Acknowledge Signal</button>
+      <button class="warn" onclick="startAction('request_reassessment')">Request Nurse Reassessment</button>
+      <button onclick="startAction('resolve')">Resolve Signal</button>
+    </div>
+    <div class="confirm" id="confirmBox">
+      <div id="confirmLabel" class="small"></div>
+      <input id="reasonInput" type="text" placeholder="Reason (recorded in audit log)" style="margin:6px 0;" />
+      <button class="go" onclick="confirmAction()">Confirm</button> <button onclick="cancelAction()">Cancel</button>
+    </div>
+    <div id="actionMsg" class="small" style="margin-top:6px;"></div>
+    <p class="muted small">Acknowledge is not a completed reassessment. Resolve is not medical clearance. Actions only write an audit event; official triage, treatment and beds are unchanged.</p>
+    <h4>Audit log (this run)</h4>
+    <div class="muted">${p.audit_log.length ? p.audit_log.map(a => `${new Date(a.created_at).toLocaleTimeString()} · ${esc(a.actor)}: ${esc(a.action)}${a.reason ? ` (${esc(a.reason)})` : ""}`).join("<br>") : "No actions yet."}</div>
+    <p class="muted small">${(p.limitations || []).map(esc).join(" ")}</p>`;
+}
+
+const ACTION_LABEL = { acknowledge: "Acknowledge Signal", request_reassessment: "Request Nurse Reassessment", resolve: "Resolve Signal" };
+
+function startAction(action) {
+  pendingAction = { action, key: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())) };
+  document.getElementById("confirmBox").style.display = "block";
+  document.getElementById("confirmLabel").textContent = `Confirm “${ACTION_LABEL[action]}” — writes an audit event only.`;
+  document.getElementById("reasonInput").focus();
+}
+function cancelAction() { pendingAction = null; document.getElementById("confirmBox").style.display = "none"; }
+
+async function confirmAction() {
+  if (!pendingAction || !selectedId) return;
+  const msg = document.getElementById("actionMsg");
+  msg.className = "small muted"; msg.textContent = "Writing audit event…";
+  try {
+    const r = await post(`/patient/${selectedId}/action`, {
+      actor: "Nurse (demo)", action: pendingAction.action, reason: document.getElementById("reasonInput").value.trim() || null,
+      idempotency_key: pendingAction.key, queue_version: detailVersion,
+    });
+    if (!r.confirmed) throw new Error("not confirmed");
+    pendingAction = null;
+    await selectPatient(selectedId);
+    const m = document.getElementById("actionMsg");
+    m.className = "small ok-msg";
+    m.textContent = `✓ Audit confirmed at ${new Date(r.audit_entry.created_at).toLocaleTimeString()} (${r.audit_entry.action}).`;
+  } catch (e) {
+    msg.className = "small err-msg"; msg.textContent = `✗ Not recorded: ${e.message}. Nothing changed; try again.`;
+  }
+}
+
+// ---------- Ask Atria ----------
+
+document.getElementById("suggestions").innerHTML = SUGGESTIONS.map(s => `<button class="chip" onclick="askAtria(${esc(JSON.stringify(s))})">${esc(s)}</button>`).join("");
+
+async function askAtria(q) {
+  const input = document.getElementById("askInput");
+  const question = (q || input.value).trim();
+  if (!question) return;
+  input.value = question;
+  const answer = document.getElementById("askAnswer"), meta = document.getElementById("askMeta");
+  answer.textContent = "Thinking…"; meta.textContent = "";
+  try {
+    const r = await post("/ask", { question, patient_id: selectedId });
+    answer.textContent = r.answer;
+    meta.innerHTML = `<span class="provider ${esc(r.provider)}">${r.provider === "gemini" ? "Gemini · " + esc(r.model) : "Sourced fallback"}</span> · queue ${esc(r.queue_version)} · as of ${hhmm(r.as_of)} UTC` +
+      (r.notice ? `<br>${esc(r.notice)}` : "");
+  } catch (e) { answer.textContent = ""; meta.innerHTML = `<span class="error">Ask Atria unavailable: ${esc(e.message)}</span>`; }
+}
+
+// ---------- Raleigh ----------
+
+let mapReady = false;
+function showTab(t) {
+  document.getElementById("boardView").style.display = t === "board" ? "" : "none";
+  document.getElementById("raleighView").style.display = t === "raleigh" ? "block" : "none";
+  document.getElementById("tabBoard").classList.toggle("active", t === "board");
+  document.getElementById("tabRaleigh").classList.toggle("active", t === "raleigh");
+  if (t === "raleigh" && !mapReady) loadRaleigh();
+}
+
+async function loadRaleigh() {
+  let d;
+  try { d = await api("/raleigh/overview?live=true"); } catch (e) { document.getElementById("raleighSource").innerHTML = `<span class="error">${esc(e.message)}</span>`; return; }
+  mapReady = true;
+  const s = d.summary;
+  document.getElementById("raleighStats").innerHTML = [
+    [s.total, "emergency departments in the region"], [s.wake_county, "in Wake County"], [s.trauma_listed, "trauma centers"], [s.freestanding_or_other, "freestanding EDs"],
+  ].map(([n, l]) => `<div class="stat"><b>${n}</b><span class="muted small">${esc(l)}</span></div>`).join("");
+  const src = d.source;
+  const edited = new Date(src.source_last_edited + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  document.getElementById("raleighSource").innerHTML =
+    `Facility locations and listed services from <a style="color:var(--blue)" href="${esc(src.item_url)}" target="_blank" rel="noopener">${esc(src.publisher)}</a>, updated ${esc(edited)}. ` +
+    `Locations only; no live capacity or wait times. Map © OpenStreetMap contributors.`;
+
+  const kind = f => (f.services || "").toLowerCase().includes("trauma") ? "trauma" : f.facility_type === "Other" ? "freestanding" : "hospital";
+  const COLORS = { trauma: "#ff8080", hospital: "#8ab4ff", freestanding: "#7fd49a" };
+  const LABELS = { trauma: "Trauma center", hospital: "Hospital ED", freestanding: "Freestanding ED" };
+  const facs = d.facilities.map(f => ({ ...f, kind: kind(f) }))
+    .sort((a, b) => (a.county !== "Wake") - (b.county !== "Wake") || (a.kind !== "trauma") - (b.kind !== "trauma") || a.name.localeCompare(b.name));
+
+  let map = null;
+  const markers = new Map();
+  if (window.L) {
+    map = L.map("map").setView([35.78, -78.64], 9);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap contributors · Wake County GIS" }).addTo(map);
+    facs.forEach(f => {
+      const m = L.circleMarker([f.lat, f.lon], { radius: f.kind === "trauma" ? 9 : 6, color: COLORS[f.kind], weight: 2, fillOpacity: .6 })
+        .bindPopup(`<b>${esc(f.name)}</b><br>${LABELS[f.kind]}<br>${esc(f.address)}, ${esc(f.city)} · ${esc(f.county)} County`)
+        .addTo(map);
+      markers.set(f.name, m);
+    });
+    map.invalidateSize();
+    map.fitBounds(L.featureGroup(facs.filter(f => f.county === "Wake").map(f => markers.get(f.name))).getBounds().pad(0.35));
+  } else {
+    document.getElementById("map").innerHTML = '<p class="muted" style="padding:12px">Map could not load. The list of emergency departments is still available.</p>';
+  }
+
+  const FILTERS = [["all", "All"], ["wake", "Wake County"], ["trauma", "Trauma"], ["freestanding", "Freestanding"]];
+  let filter = "all";
+  const renderList = () => {
+    const shown = facs.filter(f => filter === "all" || (filter === "wake" ? f.county === "Wake" : f.kind === filter));
+    document.getElementById("facFilters").innerHTML = FILTERS.map(([k, l]) =>
+      `<button class="chip${k === filter ? " on" : ""}" data-f="${k}">${l}</button>`).join("");
+    document.getElementById("raleighBody").innerHTML = shown.map(f =>
+      `<div class="fac" data-name="${esc(f.name)}"><i class="dot" style="background:${COLORS[f.kind]}"></i>` +
+      `<div><b>${esc(f.name)}</b><span class="muted small">${LABELS[f.kind]} · ${esc(f.city)}, ${esc(f.county)} County</span></div></div>`).join("");
+    markers.forEach((m, name) => {
+      const f = facs.find(x => x.name === name);
+      const on = shown.includes(f);
+      m.setStyle({ opacity: on ? 1 : .15, fillOpacity: on ? .6 : .05 });
+    });
+  };
+  document.getElementById("facFilters").onclick = e => { const k = e.target.dataset.f; if (k) { filter = k; renderList(); } };
+  document.getElementById("raleighBody").onclick = e => {
+    const row = e.target.closest(".fac"); const m = row && markers.get(row.dataset.name);
+    if (m) { map.flyTo(m.getLatLng(), 12, { duration: .6 }); m.openPopup(); }
+  };
+  renderList();
+}
+
+loadQueue();
+setInterval(loadQueue, 1500);
+</script>
+</body>
+</html>

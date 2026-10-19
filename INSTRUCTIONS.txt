@@ -1,0 +1,13 @@
+To run it:
+
+Unzip it anywhere.
+Supabase: create a project at supabase.com, open SQL Editor, paste and run atria_schema.sql (creates the tables and seeds the 4 demo patients). Then grab your Project URL and service_role key from Project Settings → API.
+Gemini: get an API key from aistudio.google.com/apikey.
+Backend:
+   cd backend
+   python3 -m venv venv && source venv/bin/activate
+   pip install -r requirements.txt
+   cp .env.example .env   # paste in SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GEMINI_API_KEY
+   uvicorn main:app --reload --port 8000
+Frontend: just open frontend/index.html in a browser (it talks to http://localhost:8000). If your browser blocks local file fetches, serve it instead: cd frontend && python3 -m http.server 5500, then visit localhost:5500.
+Check it works: Bay 4 should show persistent_change and rank above Bay 7; Bay 9’s one-off spike should settle back to stable; Bay 2’s long wait shouldn’t push it to the top despite waiting longest.

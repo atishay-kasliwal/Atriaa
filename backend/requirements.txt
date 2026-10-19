@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+supabase
+python-dotenv
+google-genai
+python-dateutil
+httpx
+sentry-sdk[fastapi]

@@ -1,0 +1,12 @@
+.git
+.venv
+**/__pycache__
+**/*.pyc
+.env
+.env.*
+!backend/.env.example
+var
+dashboard
+tests
+*.sqlite3*
+.DS_Store
