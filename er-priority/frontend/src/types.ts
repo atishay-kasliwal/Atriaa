@@ -117,3 +117,19 @@ export type SampleState = {
     total: number;
     done?: boolean;
 };
+
+export type Facility = {
+    name: string;
+    facility_type: string;
+    services: string;
+    address: string;
+    city: string;
+    county: string;
+    lat: number;
+    lon: number;
+};
+
+export type NearbyData = {
+    source: { publisher: string; dataset: string; item_url: string; source_last_edited: string };
+    facilities: Facility[];
+};

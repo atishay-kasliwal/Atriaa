@@ -1321,3 +1321,7 @@ h3 {
 .nearby-card:hover {
   border-color: var(--primary);
 }
+
+/* Nearby ERs */
+.nearby-origin { min-width: 260px; }
+.action-cell a.secondary-button { display: block; text-align: center; text-decoration: none; padding: 7px 10px; font-size: 12px; width: 100%; }

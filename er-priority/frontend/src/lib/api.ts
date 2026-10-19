@@ -1,4 +1,4 @@
-import type { AskAnswer, BedBoard, CheckInStatus, LiveQueue, PriorityLevel, SampleState } from "../types";
+import type { AskAnswer, BedBoard, CheckInStatus, LiveQueue, NearbyData, PriorityLevel, SampleState } from "../types";
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`/api${path}`, {
@@ -53,6 +53,7 @@ export const api = {
         post<AskAnswer>("/live/ask", { question, checkin_id: checkinId || null }),
     reset: () => post<{ removed: number }>("/live/reset", {}),
 
+    nearby: () => call<NearbyData>("/raleigh/overview"),
     sampleState: () => call<SampleState>("/live/sample"),
     loadSample: () => post<SampleState>("/live/sample/load", {}),
     sampleNext: () => post<SampleState>("/live/sample/next", {}),

@@ -9,6 +9,7 @@ const NAV = [
     { href: "/nurse/ask", icon: "✦", label: "Ask Atria" },
     { href: "/nurse/intake", icon: "＋", label: "Front-desk check-in" },
     { href: "/nurse/trends", icon: "∿", label: "Vitals trends" },
+    { href: "/nurse/nearby", icon: "⌖", label: "Nearby ERs" },
 ];
 
 const CRUMBS: Record<string, string> = {
@@ -16,6 +17,7 @@ const CRUMBS: Record<string, string> = {
     "/nurse/ask": "Ask Atria",
     "/nurse/intake": "Front-desk check-in",
     "/nurse/trends": "Vitals trends",
+    "/nurse/nearby": "Nearby ERs",
 };
 
 function Shell({ children }: { children: React.ReactNode }) {
