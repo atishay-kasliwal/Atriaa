@@ -42,11 +42,22 @@ class PostgresStore:
     def __init__(self, url: str):
         self.conn = _Conn(url)
 
+    def _run(self, fn):
+        import psycopg
+
+        try:
+            return self.conn.run(fn)
+        except psycopg.errors.FeatureNotSupported:
+            # A schema change (e.g. a new column) invalidates psycopg's prepared plans:
+            # "cached plan must not change result type". A fresh connection fixes it.
+            self.conn._conn = None
+            return self.conn.run(fn)
+
     def _all(self, sql, params=None) -> list[dict]:
         def fn(cur):
             cur.execute(sql, params)
             return [_row(r) for r in cur.fetchall()] if cur.description else []
-        return self.conn.run(fn)
+        return self._run(fn)
 
     def _one(self, sql, params=None):
         rows = self._all(sql, params)
@@ -67,7 +78,7 @@ class PostgresStore:
             "ON CONFLICT (id) DO UPDATE SET bay = EXCLUDED.bay, arrival_time = EXCLUDED.arrival_time, "
             "initial_triage = EXCLUDED.initial_triage, chief_complaint = EXCLUDED.chief_complaint"
         )
-        self.conn.run(lambda cur: cur.executemany(sql, [{c: r.get(c) for c in PATIENT_COLS} for r in rows]))
+        self._run(lambda cur: cur.executemany(sql, [{c: r.get(c) for c in PATIENT_COLS} for r in rows]))
 
     def update_patient(self, patient_id, fields):
         cols = _cols(fields, PATIENT_COLS[1:])
@@ -98,7 +109,7 @@ class PostgresStore:
                 cur.execute(sql, {c: r.get(c) for c in EVENT_COLS})
                 out.extend(_row(x) for x in cur.fetchall())
             return out
-        return self.conn.run(fn)
+        return self._run(fn)
 
     # ---------- audit ----------
 
@@ -143,7 +154,7 @@ class PostgresStore:
                 params,
             )
             return [_row(r) for r in cur.fetchall()]
-        rows = self.conn.run(fn)
+        rows = self._run(fn)
         if not rows:
             raise StoreError("run state write was not confirmed")
         return rows[0]
