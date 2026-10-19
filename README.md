@@ -50,6 +50,21 @@ cd er-priority/frontend && npm ci && npm run dev
 ```
 `/api/*` is proxied to `ATRIA_API_URL` (default `http://127.0.0.1:8001`). Readings come from the pain score at check-in, the patient's own updates, and nurse re-checks (HR, SpO2, pain). The sample waiting room replays the fixed 8-patient scenario in `backend/scenario.py` through the same live pages. The original scripted endpoints (`/demo/*`, `/queue`, `/patient/*`) remain in the API and are covered by tests, but no UI uses them.
 
+## Deploying
+Live: app https://atria-er.vercel.app, API https://atria-api-lzin.onrender.com, data in Tiger.
+
+**API (Render).** `render.yaml` is a Render Blueprint: Docker build from `Dockerfile`, branch `main`, health check `/health`. Every push to `main` redeploys it. Secrets are set in the Render dashboard, never in git: `GEMINI_API_KEY`, `SENTRY_DSN`, `TIGER_DATABASE_URL`, `TIGER_PASSWORD`. The free plan sleeps after about 15 idle minutes, so open the site a couple of minutes before a demo.
+
+**App (Vercel).** No `vercel.json` is needed; Vercel detects Next.js. The only setting is `ATRIA_API_URL`, which `er-priority/frontend/next.config.ts` uses to forward `/api/*` to the API. It must be set at build time, because Next bakes the forwarding into the build. From `er-priority/frontend`:
+```
+npx vercel login
+npx vercel link            # choose the existing project "atria-er" (ask to be added under Settings > Members)
+npx vercel deploy --prod \
+  --build-env ATRIA_API_URL=https://atria-api-lzin.onrender.com \
+  --env ATRIA_API_URL=https://atria-api-lzin.onrender.com
+```
+This deploys the local folder, including uncommitted changes, so commit first. Pushing to GitHub does not update the app unless the Vercel project is connected to the repo (Vercel > atria-er > Settings > Git: root directory `er-priority/frontend`, branch `main`, plus `ATRIA_API_URL` under Environment Variables).
+
 ## Tests
 ```
 cd backend && ../.venv/bin/python -m pytest -q tests
