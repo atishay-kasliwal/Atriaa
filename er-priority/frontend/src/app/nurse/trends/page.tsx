@@ -15,7 +15,7 @@ type Trend = {
     hr_series: number[] | null;
 };
 type Trends = { patients: Trend[]; query_ms: number; source: string };
-type Hour = { hour: string; readings: number; hr_avg: number | null; spo2_min: number | null; low_spo2_buckets: number };
+type Hour = { hour: string; readings: number; patient_buckets: number; hr_avg: number | null; spo2_min: number | null; low_spo2_buckets: number };
 type Load = { hours: Hour[]; query_ms: number; source: string };
 type Stats = {
     readings: number;
@@ -59,17 +59,20 @@ function Spark({ values }: { values: number[] }) {
 
 function LoadChart({ hours }: { hours: Hour[] }) {
     if (!hours.length) return <p className="field-caption">No history yet. Run scripts/seed_tiger.py.</p>;
-    const max = Math.max(...hours.map((h) => h.readings), 1);
+    const max = Math.max(...hours.map((h) => h.patient_buckets), 1);
     const w = 100 / hours.length;
+    const y = (n: number) => (n / max) * 38;
     return (
-        <svg viewBox="0 0 100 40" preserveAspectRatio="none" style={{ width: "100%", height: 160 }} role="img"
-            aria-label="Readings per hour">
+        <svg viewBox="0 0 100 40" preserveAspectRatio="none" style={{ width: "100%", height: 160, display: "block" }}
+            role="img" aria-label="Patient check-ins per hour, with low-SpO2 share">
             {hours.map((h, i) => (
-                <rect key={h.hour} x={i * w} width={Math.max(w - 0.1, 0.05)} y={40 - (h.readings / max) * 38}
-                    height={(h.readings / max) * 38}
-                    fill={h.low_spo2_buckets > 0 ? "var(--amber)" : "var(--primary)"}>
-                    <title>{`${new Date(h.hour).toLocaleString()} · ${h.readings} readings · ${h.low_spo2_buckets} low-SpO2`}</title>
-                </rect>
+                <g key={h.hour}>
+                    <title>{`${new Date(h.hour).toLocaleString()} · ${h.readings} readings · ${h.low_spo2_buckets} of ${h.patient_buckets} with SpO2 < 92%`}</title>
+                    <rect x={i * w} width={Math.max(w - 0.1, 0.05)} y={40 - y(h.patient_buckets)}
+                        height={y(h.patient_buckets) - y(h.low_spo2_buckets)} fill="var(--primary)" />
+                    <rect x={i * w} width={Math.max(w - 0.1, 0.05)} y={40 - y(h.low_spo2_buckets)}
+                        height={y(h.low_spo2_buckets)} fill="var(--amber)" />
+                </g>
             ))}
         </svg>
     );
@@ -110,8 +113,8 @@ export default function TrendsPage() {
                     <p className="eyebrow">TIGER DATA · TIMESCALEDB</p>
                     <h1>Vitals trends</h1>
                     <p className="dashboard-subtitle">
-                        Every reading is also written to a Tiger Data hypertable. These views come from continuous
-                        aggregates, so they stay fast as history grows.
+                        Every reading is also written to a Tiger Data hypertable: compressed history plus
+                        continuous aggregates, so the 30-day view stays fast as the data grows.
                     </p>
                 </div>
             </div>
@@ -139,15 +142,15 @@ export default function TrendsPage() {
                 <div className="dashboard-stat stat-recheck">
                     <span>Trend query</span>
                     <strong>{trends ? `${trends.query_ms} ms` : "–"}</strong>
-                    <small>from {trends?.source ?? "vitals_5m"}</small>
+                    <small>from {trends?.source ?? "vitals"}</small>
                 </div>
             </div>
 
             <section className="dashboard-section">
-                <div className="section-heading">
+                <div className="section-heading queue-heading">
                     <div>
                         <h2>Who is changing (last 24 h)</h2>
-                        <p>Change in heart rate since the first reading, from 5-minute buckets. Largest rise first.</p>
+                        <p>Change in heart rate since each patient&apos;s first reading. Largest rise first.</p>
                     </div>
                 </div>
                 <div className="patient-table-wrap">
@@ -195,17 +198,20 @@ export default function TrendsPage() {
             </section>
 
             <section className="dashboard-section">
-                <div className="section-heading">
+                <div className="section-heading queue-heading">
                     <div>
                         <h2>Waiting-room load, last 7 days</h2>
                         <p>
-                            Readings per hour from the hourly continuous aggregate (built on the 5-minute one).
-                            Amber hours had at least one SpO2 below 92%. {load ? `${load.query_ms} ms.` : ""}
+                            Patients with readings each hour, from the hourly continuous aggregate (built on the
+                            5-minute one). Amber is the share whose SpO2 dropped below 92%.{" "}
+                            {load ? `${load.query_ms} ms.` : ""}
                         </p>
                     </div>
                 </div>
-                <LoadChart hours={load?.hours ?? []} />
-                <p className="form-disclaimer">History is synthetic seed data. Not a medical device.</p>
+                <div style={{ padding: "0 22px 18px" }}>
+                    <LoadChart hours={load?.hours ?? []} />
+                    <p className="form-disclaimer">History is synthetic seed data. Not a medical device.</p>
+                </div>
             </section>
         </section>
     );

@@ -435,8 +435,10 @@ def tiger_trends(hours: int = 24):
     out = tiger_call(t.trends, ["live"] + ([run["run_id"]] if run else []), max(1, min(hours, 24 * 30)))
     labels = {p_id: bay for bay, p_id, *_ in scenario.PATIENTS}
     labels.update({c["id"]: f"{c['ticket']} {c.get('display_name') or ''}".strip() for c in store.list_checkins()})
+    # Tiger keeps history; show only patients still on the board (cleared check-ins drop off).
+    out["patients"] = [p for p in out["patients"] if p["patient_id"] in labels]
     for p in out["patients"]:
-        p["label"] = labels.get(p["patient_id"], p["patient_id"][:8])
+        p["label"] = labels[p["patient_id"]]
         p["source"] = "live" if p["run_id"] == "live" else "replay"
     out["patients"].sort(key=lambda p: -((p["hr_last"] or 0) - (p["hr_first"] or 0)))
     return out

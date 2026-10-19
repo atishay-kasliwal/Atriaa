@@ -19,11 +19,12 @@ SELECT create_hypertable('vitals', by_range('observed_at', INTERVAL '1 day'), if
 
 CREATE INDEX IF NOT EXISTS vitals_patient_time_idx ON vitals (patient_id, observed_at DESC);
 
--- Columnar compression: one segment per patient, so per-patient trend scans stay cheap.
+-- Columnar compression. Segments per run, ordered by patient then time, so each column
+-- compresses as long runs of similar values. Per-patient reads go through the aggregates.
 ALTER TABLE vitals SET (
   timescaledb.compress,
-  timescaledb.compress_segmentby = 'run_id, patient_id',
-  timescaledb.compress_orderby = 'observed_at DESC'
+  timescaledb.compress_segmentby = 'run_id',
+  timescaledb.compress_orderby = 'patient_id, observed_at DESC'
 );
 SELECT add_compression_policy('vitals', INTERVAL '2 days', if_not_exists => TRUE);
 

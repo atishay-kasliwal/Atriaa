@@ -97,26 +97,28 @@ class TigerAnalytics:
         rows = self._conn.run(lambda cur: cur.execute(sql, params).fetchall())
         return rows, round((time.perf_counter() - t0) * 1000, 1)
 
-    def trends(self, run_ids: list[str], hours: int = 6) -> dict:
-        """Per-patient change over the window, straight from the 5-minute aggregate."""
+    def trends(self, run_ids: list[str], hours: int = 24) -> dict:
+        """Per-patient change for the patients on the board. Reads the raw hypertable, since
+        re-checks seconds apart would share one 5-minute bucket; the (run_id, time) chunk
+        exclusion keeps it to today's chunk."""
         rows, ms = self._timed(
             """
             SELECT run_id, patient_id,
-                   sum(readings)::int                         AS readings,
-                   first(hr_avg, bucket)   FILTER (WHERE hr_avg IS NOT NULL)   AS hr_first,
-                   last(hr_avg, bucket)    FILTER (WHERE hr_avg IS NOT NULL)   AS hr_last,
-                   first(spo2_avg, bucket) FILTER (WHERE spo2_avg IS NOT NULL) AS spo2_first,
-                   min(spo2_min)                              AS spo2_min,
-                   max(pain_max)                              AS pain_max,
-                   min(bucket) AS first_bucket, max(bucket) AS last_bucket,
-                   array_agg(hr_avg ORDER BY bucket) FILTER (WHERE hr_avg IS NOT NULL) AS hr_series
-            FROM vitals_5m
-            WHERE run_id = ANY(%s) AND bucket > now() - make_interval(hours => %s)
+                   count(*)::int                                                  AS readings,
+                   first(hr, observed_at)   FILTER (WHERE hr IS NOT NULL)         AS hr_first,
+                   last(hr, observed_at)    FILTER (WHERE hr IS NOT NULL)         AS hr_last,
+                   first(spo2, observed_at) FILTER (WHERE spo2 IS NOT NULL)       AS spo2_first,
+                   min(spo2)                                                      AS spo2_min,
+                   max(pain)                                                      AS pain_max,
+                   min(observed_at) AS first_at, max(observed_at) AS last_at,
+                   array_agg(hr ORDER BY observed_at) FILTER (WHERE hr IS NOT NULL) AS hr_series
+            FROM vitals
+            WHERE run_id = ANY(%s) AND observed_at > now() - make_interval(hours => %s)
             GROUP BY run_id, patient_id
             """,
             (run_ids, hours),
         )
-        return {"patients": [_jsonable(r) for r in rows], "query_ms": ms, "source": "vitals_5m"}
+        return {"patients": [_jsonable(r) for r in rows], "query_ms": ms, "source": "vitals hypertable"}
 
     def load(self, days: int = 7) -> dict:
         rows, ms = self._timed(
