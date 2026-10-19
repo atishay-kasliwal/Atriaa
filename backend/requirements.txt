@@ -6,3 +6,4 @@ google-genai
 python-dateutil
 httpx
 sentry-sdk[fastapi]
+psycopg[binary]

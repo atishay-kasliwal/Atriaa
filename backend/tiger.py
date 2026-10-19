@@ -6,6 +6,7 @@ Tiger never slows down or breaks the demo. `TigerAnalytics` reads the continuous
 aggregates back for the trends view. Both are off unless TIGER_DATABASE_URL is set.
 """
 import logging
+import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -36,13 +37,20 @@ class _Conn:
             for attempt in (1, 2):
                 try:
                     if self._conn is None or self._conn.closed:
-                        self._conn = psycopg.connect(self.url, autocommit=True, connect_timeout=5, row_factory=dict_row)
+                        self._conn = psycopg.connect(self.url, autocommit=True, connect_timeout=5, row_factory=dict_row,
+                                                     **password_kwargs())
                     with self._conn.cursor() as cur:
                         return fn(cur)
                 except psycopg.OperationalError:
                     self._conn = None
                     if attempt == 2:
                         raise
+
+
+def password_kwargs() -> dict:
+    # The Tiger console's URL has no password; it may live in its own variable.
+    pw = os.environ.get("TIGER_PASSWORD")
+    return {"password": pw} if pw else {}
 
 
 def vitals_rows(rows: list[dict]) -> list[dict]:

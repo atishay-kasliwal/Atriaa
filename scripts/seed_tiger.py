@@ -15,9 +15,16 @@ from pathlib import Path
 import psycopg
 from dotenv import load_dotenv
 
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "backend"))
+
 ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(ROOT / "backend" / ".env")
 load_dotenv(ROOT / ".env.local")
+
+
+from tiger import password_kwargs  # noqa: E402
 
 
 def visits(days: int, rng: random.Random):
@@ -51,7 +58,7 @@ def main():
         raise SystemExit("TIGER_DATABASE_URL is not set (add it to .env.local)")
 
     rows = list(visits(args.days, random.Random(args.seed)))
-    with psycopg.connect(url, autocommit=True) as conn, conn.cursor() as cur:
+    with psycopg.connect(url, autocommit=True, **password_kwargs()) as conn, conn.cursor() as cur:
         cur.execute((ROOT / "tiger" / "schema.sql").read_text())
         cur.execute("DELETE FROM vitals WHERE run_id = 'history'")
         with cur.copy("COPY vitals (observed_at, patient_id, run_id, event_key, hr, spo2, pain) FROM STDIN") as copy:

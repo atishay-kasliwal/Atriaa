@@ -8,12 +8,14 @@ const NAV = [
     { href: "/nurse", icon: "▤", label: "Waiting room" },
     { href: "/nurse/ask", icon: "✦", label: "Ask Atria" },
     { href: "/nurse/intake", icon: "＋", label: "Front-desk check-in" },
+    { href: "/nurse/trends", icon: "∿", label: "Vitals trends" },
 ];
 
 const CRUMBS: Record<string, string> = {
     "/nurse": "Waiting room",
     "/nurse/ask": "Ask Atria",
     "/nurse/intake": "Front-desk check-in",
+    "/nurse/trends": "Vitals trends",
 };
 
 function Shell({ children }: { children: React.ReactNode }) {

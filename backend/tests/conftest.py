@@ -4,6 +4,7 @@ from pathlib import Path
 
 os.environ["ATRIA_STORE"] = "memory"
 os.environ["GEMINI_API_KEY"] = ""
+os.environ["TIGER_DATABASE_URL"] = ""  # tests never touch Tiger
 os.environ["SENTRY_DSN"] = ""  # empty, not unset: main.py would reload it from .env.local
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
