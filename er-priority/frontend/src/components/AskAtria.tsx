@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api, clock } from "../lib/api";
 import type { AskAnswer, LiveQueue } from "../types";
 
@@ -26,6 +26,19 @@ export default function AskAtria({ queue, patientId, onPatientChange }: AskAtria
     const nextId = useRef(0);
     const patients = queue?.queue ?? [];
     const selected = patients.find((p) => p.id === patientId);
+
+    // Demo: answer the two key questions as soon as the waiting room has loaded.
+    const autoAsked = useRef(false);
+    useEffect(() => {
+        if (autoAsked.current || !queue || !queue.queue.length) return;
+        autoAsked.current = true;
+        (async () => {
+            for (const q of ["Who changed most since check-in?", "Who should be re-checked next?"]) {
+                await ask(q);
+            }
+        })();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [queue]);
 
     async function ask(text: string) {
         const q = text.trim();
