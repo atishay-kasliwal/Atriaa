@@ -383,6 +383,40 @@ def post_live_call(checkin_id: UUID, body: StaffActionRequest):
     return live.call_in(str(checkin_id), body.actor)
 
 
+class BedRequest(BaseModel):
+    actor: str = Field(default="Charge nurse", min_length=1, max_length=80)
+    bed: Optional[str] = Field(default=None, max_length=20)  # None: first free bed
+
+
+@app.get("/live/beds")
+def get_live_beds():
+    return live.beds()
+
+
+@app.post("/live/{checkin_id}/bed")
+def post_live_bed(checkin_id: UUID, body: BedRequest):
+    live_waiting(checkin_id)
+    try:
+        return live.assign_bed(str(checkin_id), body.actor, body.bed)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc))
+    except ValueError as exc:
+        raise HTTPException(409, str(exc))
+
+
+@app.post("/live/beds/{bed}/discharge")
+def post_live_discharge(bed: str, body: StaffActionRequest):
+    try:
+        return live.discharge(bed, body.actor)
+    except LookupError as exc:
+        raise HTTPException(409, str(exc))
+
+
+@app.post("/live/rush/load")
+def post_live_rush_load():
+    return live.load_rush()
+
+
 @app.post("/live/ask")
 def post_live_ask(body: LiveAskRequest):
     queue = live.queue(include_agents=True)

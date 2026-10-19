@@ -11,7 +11,7 @@ Priority is always assigned by a human. Atria never changes it; it only orders
 the separate reassessment attention list and flags persistent change.
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import core
@@ -31,6 +31,33 @@ SAMPLE_PEOPLE = {
     "Bay 6": ("Lucas Meyer", "1984-12-03"),
 }
 SAMPLE_PRIORITY = {1: 1, 2: 2, 3: 3, 4: 3, 5: 3}  # illustrative ESI -> Priority 1-3
+
+BEDS = [f"Bed {i}" for i in range(1, 7)]
+
+# ER rush demo: every bed is taken, then 10 people arrive at once. Each arrival carries the
+# front desk's suggested priority, which a nurse approves or changes. All fictional.
+# (name, dob, minutes in bed / minutes ago, priority, complaint)
+RUSH_OCCUPANTS = [
+    ("Henry Walsh", "1949-02-11", 95, 1, "Chest pain"),
+    ("Aisha Bello", "1990-06-23", 80, 2, "Abdominal pain"),
+    ("Tom Nguyen", "1975-10-02", 70, 2, "Fall, wrist injury"),
+    ("Rosa Martinez", "1962-08-17", 55, 1, "Shortness of breath"),
+    ("Ben Carter", "2001-03-29", 40, 3, "Laceration, left hand"),
+    ("Linda Okafor", "1957-12-05", 25, 2, "Dizziness"),
+]
+# (name, dob, minutes ago, suggested priority, symptoms, hr, spo2, pain)
+RUSH_ARRIVALS = [
+    ("James Miller", "1953-04-08", 14, 1, ["Chest pain", "Sweating"], 104, 95, 8),
+    ("Maya Patel", "1988-04-12", 13, 3, ["Mild shortness of breath"], 92, 98, 4),
+    ("Chloe Turner", "1999-09-14", 12, 3, ["Sore throat", "Fever"], 96, 98, 3),
+    ("Marcus Lee", "1970-01-30", 11, 2, ["Severe headache", "Nausea"], 88, 97, 7),
+    ("Fatima Hassan", "1985-07-21", 10, 2, ["Abdominal pain"], 99, 98, 6),
+    ("Noah Kim", "2010-11-03", 8, 3, ["Ankle injury"], 82, 99, 5),
+    ("Elena Popescu", "1944-05-16", 7, 2, ["Confusion", "Fever"], 108, 94, 3),
+    ("David Osei", "1968-02-27", 5, 3, ["Back pain"], 78, 98, 6),
+    ("Sara Lindqvist", "1993-12-09", 3, 2, ["Allergic reaction", "Rash"], 101, 97, 4),
+    ("Victor Ruiz", "1980-08-01", 1, 3, ["Cough"], 86, 97, 2),
+]
 
 FEELING_NOTES = {
     "worse": "Patient reports feeling worse",
@@ -52,7 +79,7 @@ class LiveWaitingRoom:
 
     def check_in(self, name: str, date_of_birth: Optional[str], symptoms: list[str],
                  notes: Optional[str], pain: Optional[int], arrived_at: Optional[datetime] = None,
-                 intake: Optional[dict] = None) -> dict:
+                 intake: Optional[dict] = None, suggested_priority: Optional[int] = None) -> dict:
         pid = str(uuid.uuid4())
         arrived = arrived_at or now()
         at = arrived.isoformat()
@@ -73,6 +100,7 @@ class LiveWaitingRoom:
                 "date_of_birth": date_of_birth or None,
                 "symptoms": symptoms,
                 "notes": notes or None,
+                **({"suggested_priority": suggested_priority} if suggested_priority else {}),
             })
             readings = intake or {"pain": pain}
             self._event(pid, "intake", at=at, note=f"Check-in: {', '.join(symptoms)}", **readings)
@@ -113,6 +141,67 @@ class LiveWaitingRoom:
     def call_in(self, checkin_id: str, actor: str) -> dict:
         self._audit(checkin_id, actor, "resolve", "Called in from the waiting room")
         return self.store.update_checkin(checkin_id, {"status": "called", "reassessment_requested_at": None})
+
+    # ---------- beds ----------
+
+    def beds(self) -> dict:
+        checkins = self.store.list_checkins()
+        roomed = {c["bed"]: c for c in checkins if c["status"] == "called" and c.get("bed")}
+        beds = []
+        for name in BEDS:
+            c = roomed.get(name)
+            beds.append({"bed": name, "occupant": c and {
+                "id": c["id"], "ticket": c["ticket"], "name": c["display_name"],
+                "priority": c.get("priority"), "checked_in_at": c["created_at"],
+                "symptoms": c.get("symptoms") or [],
+            }})
+        line = self.line([c for c in checkins if c["status"] == "waiting"])
+        nxt = line[0] if line else None
+        free = sum(1 for b in beds if not b["occupant"])
+        return {
+            "beds": beds, "total": len(beds), "occupied": len(beds) - free, "free": free,
+            # Next in the official line (human priority, then check-in time). A nurse confirms.
+            "next_up": nxt and {"id": nxt["id"], "ticket": nxt["ticket"], "name": nxt["display_name"],
+                                "priority": nxt["priority"]},
+        }
+
+    def assign_bed(self, checkin_id: str, actor: str, bed: Optional[str] = None) -> dict:
+        state = self.beds()
+        free = [b["bed"] for b in state["beds"] if not b["occupant"]]
+        if bed is None:
+            if not free:
+                raise ValueError("no free bed")
+            bed = free[0]
+        elif bed not in BEDS:
+            raise LookupError(f"unknown bed {bed}")
+        elif bed not in free:
+            raise ValueError(f"{bed} is occupied")
+        with span("atria.live", "assign_bed", bed=bed):
+            self._audit(checkin_id, actor, "resolve", f"Assigned to {bed}")
+            return self.store.update_checkin(checkin_id, {"status": "called", "bed": bed,
+                                                          "reassessment_requested_at": None})
+
+    def discharge(self, bed: str, actor: str) -> dict:
+        occupant = next((b["occupant"] for b in self.beds()["beds"] if b["bed"] == bed), None)
+        if not occupant:
+            raise LookupError(f"{bed} is already free")
+        with span("atria.live", "discharge", bed=bed):
+            self._audit(occupant["id"], actor, "resolve", f"Left {bed}; bed free")
+            self.store.update_checkin(occupant["id"], {"status": "discharged"})
+        return self.beds()
+
+    def load_rush(self) -> dict:
+        """Every bed taken, then 10 arrivals awaiting a nurse's approval of their suggested priority."""
+        self.reset()
+        current = now()
+        for i, (name, dob, mins, priority, complaint) in enumerate(RUSH_OCCUPANTS):
+            c = self.check_in(name, dob, [complaint], None, None, arrived_at=current - timedelta(minutes=mins + 30))
+            self.set_priority(c["id"], priority)
+            self.store.update_checkin(c["id"], {"status": "called", "bed": BEDS[i]})
+        for name, dob, mins, suggested, symptoms, hr, spo2, pain in RUSH_ARRIVALS:
+            self.check_in(name, dob, symptoms, None, None, arrived_at=current - timedelta(minutes=mins),
+                          intake={"hr": hr, "spo2": spo2, "pain": pain}, suggested_priority=suggested)
+        return self.beds()
 
     def reset(self) -> int:
         self.sample = None
@@ -241,6 +330,7 @@ class LiveWaitingRoom:
                 "symptoms": c.get("symptoms") or [],
                 "notes": c.get("notes"),
                 "priority": c.get("priority"),
+                "suggested_priority": c.get("suggested_priority"),
                 "initial_triage": c.get("priority"),
                 "severity_label": "Priority",
                 "line_position": line_pos.get(c["id"]),
@@ -268,6 +358,7 @@ class LiveWaitingRoom:
             "flagged": sum(1 for v in ordered if v["reassessment_signal"]),
             "alerts": sum(1 for v in ordered if v["alert_active"]),
             "official_priority_unchanged": True,
+            "beds": self.beds(),
         }
 
     def status(self, checkin_id: str) -> Optional[dict]:
@@ -287,7 +378,7 @@ class LiveWaitingRoom:
             "as_of": core.iso(now()),
         }
         if c["status"] != "waiting":
-            return {**base, "stage": "called"}
+            return {**base, "stage": "called", "bed": c.get("bed")}
         waiting = self.waiting()
         line = self.line(waiting)
         tickets = [{"ticket": w["ticket"], "you": w["id"] == c["id"]} for w in line]

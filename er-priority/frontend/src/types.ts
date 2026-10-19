@@ -31,6 +31,7 @@ export type LivePatient = {
     symptoms: string[];
     notes: string | null;
     priority: PriorityLevel | null;
+    suggested_priority: PriorityLevel | null;
     line_position: number | null;
     attention_position: number;
     checked_in_at: string;
@@ -51,7 +52,28 @@ export type LivePatient = {
     acknowledgement: string | null;
 };
 
+export type Bed = {
+    bed: string;
+    occupant: {
+        id: string;
+        ticket: string;
+        name: string;
+        priority: PriorityLevel | null;
+        checked_in_at: string;
+        symptoms: string[];
+    } | null;
+};
+
+export type BedBoard = {
+    beds: Bed[];
+    total: number;
+    occupied: number;
+    free: number;
+    next_up: { id: string; ticket: string; name: string; priority: PriorityLevel } | null;
+};
+
 export type LiveQueue = {
+    beds: BedBoard;
     queue: LivePatient[];
     as_of: string;
     queue_version: string;
@@ -69,7 +91,8 @@ export type CheckInStatus = {
     symptoms: string[];
     checked_in_at: string;
     waited_minutes: number;
-    status: "waiting" | "called";
+    status: "waiting" | "called" | "discharged";
+    bed?: string | null;
     stage: "awaiting_triage" | "waiting" | "recheck_requested" | "called";
     line_position?: number | null;
     ahead?: number | null;

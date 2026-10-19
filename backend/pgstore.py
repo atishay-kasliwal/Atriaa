@@ -14,7 +14,7 @@ PATIENT_COLS = ("id", "bay", "arrival_time", "initial_triage", "chief_complaint"
 EVENT_COLS = ("patient_id", "observed_at", "hr", "spo2", "pain", "note", "run_id", "event_key")
 AUDIT_COLS = ("patient_id", "actor", "action", "reason", "run_id", "queue_version", "idempotency_key")
 CHECKIN_COLS = ("id", "ticket", "display_name", "date_of_birth", "symptoms", "notes", "priority",
-                "status", "reassessment_requested_at", "created_at")
+                "status", "reassessment_requested_at", "created_at", "bed", "suggested_priority")
 
 
 def _plain(v):

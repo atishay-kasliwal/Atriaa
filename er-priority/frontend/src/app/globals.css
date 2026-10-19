@@ -1192,3 +1192,95 @@ h3 {
 .sample-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .sample-actions .primary-button, .sample-actions .secondary-button { padding: 7px 12px; font-size: 12px; }
 .sample-bar + .dashboard-main { margin-top: 18px; }
+
+/* =====================================================
+   Bed board
+   ===================================================== */
+
+.bed-board {
+  margin-bottom: 18px;
+}
+
+.bed-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+  padding: 0 22px 22px;
+}
+
+.bed-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-left-width: 4px;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.bed-card button {
+  margin-top: auto;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+
+.bed-card .dashboard-patient {
+  font-size: 12px;
+}
+
+.bed-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bed-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.bed-occupied .bed-tag {
+  background: #f1f5f9;
+  color: var(--muted);
+}
+
+.bed-free {
+  border-color: #bbf7d0;
+  border-left-color: var(--green);
+  background: #f0fdf4;
+}
+
+.bed-free .bed-tag {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.bed-p1 { border-left-color: var(--red); }
+.bed-p2 { border-left-color: var(--amber); }
+.bed-p3 { border-left-color: var(--primary); }
+.bed-p0 { border-left-color: var(--gray); }
+
+.approve-row button {
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.approve-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+@media (max-width: 640px) {
+  .bed-grid {
+    grid-template-columns: 1fr 1fr;
+    padding: 0 14px 14px;
+  }
+}

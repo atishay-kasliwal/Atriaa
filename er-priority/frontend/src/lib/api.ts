@@ -1,4 +1,4 @@
-import type { AskAnswer, CheckInStatus, LiveQueue, PriorityLevel, SampleState } from "../types";
+import type { AskAnswer, BedBoard, CheckInStatus, LiveQueue, PriorityLevel, SampleState } from "../types";
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`/api${path}`, {
@@ -46,6 +46,9 @@ export const api = {
     acknowledge: (id: string, priority?: PriorityLevel) =>
         post(`/live/${id}/acknowledge`, { ...STAFF, priority: priority ?? null }),
     callIn: (id: string) => post(`/live/${id}/call`, STAFF),
+    assignBed: (id: string, bed?: string) => post(`/live/${id}/bed`, { ...STAFF, bed: bed ?? null }),
+    discharge: (bed: string) => post<BedBoard>(`/live/beds/${encodeURIComponent(bed)}/discharge`, STAFF),
+    loadRush: () => post<BedBoard>("/live/rush/load", {}),
     ask: (question: string, checkinId?: string) =>
         post<AskAnswer>("/live/ask", { question, checkin_id: checkinId || null }),
     reset: () => post<{ removed: number }>("/live/reset", {}),

@@ -63,3 +63,11 @@ CREATE TABLE IF NOT EXISTS checkins (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS checkins_status_created_idx ON checkins (status, created_at);
+
+-- Beds: a check-in that is roomed has status 'called' and a bed; discharge frees the bed.
+-- suggested_priority is the front desk's suggestion; a nurse approves it into `priority`.
+ALTER TABLE checkins ADD COLUMN IF NOT EXISTS bed text;
+ALTER TABLE checkins ADD COLUMN IF NOT EXISTS suggested_priority int CHECK (suggested_priority BETWEEN 1 AND 3);
+ALTER TABLE checkins DROP CONSTRAINT IF EXISTS checkins_status_check;
+ALTER TABLE checkins ADD CONSTRAINT checkins_status_check CHECK (status IN ('waiting', 'called', 'discharged'));
+CREATE UNIQUE INDEX IF NOT EXISTS checkins_one_patient_per_bed ON checkins (bed) WHERE status = 'called' AND bed IS NOT NULL;

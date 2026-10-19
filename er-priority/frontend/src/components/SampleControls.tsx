@@ -51,6 +51,19 @@ export default function SampleControls({ refresh }: { refresh: () => Promise<voi
         run(api.loadSample);
     }
 
+    async function loadRush() {
+        if (!window.confirm("Replace the waiting room with the ER rush: 6 beds full and 10 new arrivals?")) return;
+        setPlaying(false);
+        try {
+            await api.loadRush();
+            setState(await api.sampleState());
+            setError("");
+            await refresh();
+        } catch (e) {
+            setError((e as Error).message);
+        }
+    }
+
     const loaded = state?.loaded;
     const pct = state && state.total ? Math.round((state.cursor / state.total) * 100) : 0;
 
@@ -63,7 +76,7 @@ export default function SampleControls({ refresh }: { refresh: () => Promise<voi
                     <span>
                         {loaded
                             ? `Reading ${state!.cursor} of ${state!.total}${state!.done ? " · finished" : ""}`
-                            : "8 fictional patients with scripted readings over about 40 minutes"}
+                            : "ER rush: 6 beds full, 10 arrivals to approve. Or the 8-patient scripted sample."}
                     </span>
                 </div>
             </div>
@@ -73,6 +86,9 @@ export default function SampleControls({ refresh }: { refresh: () => Promise<voi
                 </div>
             )}
             <div className="sample-actions">
+                <button type="button" className="primary-button" onClick={loadRush}>
+                    Load ER rush
+                </button>
                 <button type="button" className="secondary-button" onClick={load}>
                     {loaded ? "Restart sample" : "Load sample"}
                 </button>

@@ -143,3 +143,30 @@ def test_sample_waiting_room_tells_the_bay_4_story(live):
     assert top["priority"] == 3  # Atria never changes priority
     assert live.post("/live/reset").json()["removed"] == 8
     assert live.post("/live/sample/next").status_code == 409
+
+
+def test_rush_beds_full_then_discharge_and_assign_next_in_line(client):
+    beds = client.post("/live/rush/load").json()
+    assert (beds["occupied"], beds["free"]) == (6, 0)
+    q = client.get("/live/queue").json()
+    assert q["waiting"] == 10 and q["awaiting_triage"] == 10
+    assert all(p["suggested_priority"] for p in q["queue"])
+    assert q["beds"]["next_up"] is None  # nobody approved yet
+
+    by_name = {p["name"]: p for p in q["queue"]}
+    for p in q["queue"]:  # nurse approves every suggestion
+        client.post(f"/live/{p['id']}/priority", json={"priority": p["suggested_priority"]})
+    james = by_name["James Miller"]
+    assert client.get("/live/beds").json()["next_up"]["id"] == james["id"]  # Priority 1 first
+
+    assert client.post(f"/live/{james['id']}/bed", json={}).status_code == 409  # no free bed
+    freed = client.post("/live/beds/Bed 2/discharge", json={}).json()
+    assert freed["free"] == 1
+    roomed = client.post(f"/live/{james['id']}/bed", json={}).json()
+    assert roomed["bed"] == "Bed 2" and roomed["status"] == "called"
+
+    status = client.get(f"/checkin/{james['id']}").json()
+    assert (status["stage"], status["bed"]) == ("called", "Bed 2")
+    after = client.get("/live/queue").json()
+    assert after["waiting"] == 9 and after["beds"]["free"] == 0
+    assert client.post(f"/live/{james['id']}/bed", json={}).status_code == 409  # already roomed

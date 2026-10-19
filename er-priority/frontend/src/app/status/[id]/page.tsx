@@ -129,8 +129,12 @@ export default function CheckInStatusPage() {
                 </div>
 
                 <div className={`stage-banner ${copy.tone}`} role="status">
-                    <strong>{copy.title}</strong>
-                    <p>{copy.body}</p>
+                    <strong>{status.stage === "called" && status.bed ? `Please go to ${status.bed}` : copy.title}</strong>
+                    <p>
+                        {status.stage === "called" && status.bed
+                            ? `A nurse has assigned you to ${status.bed}. Show your ticket ${status.ticket} at the door.`
+                            : copy.body}
+                    </p>
                 </div>
 
                 {movedUp && waiting && (

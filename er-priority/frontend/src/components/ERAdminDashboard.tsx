@@ -2,6 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react";
 import { api, clock, since } from "../lib/api";
+import BedBoard from "./BedBoard";
 import type { LivePatient, LiveQueue, PriorityLevel, Trajectory } from "../types";
 import { PRIORITIES, PRIORITY_LABELS } from "../types";
 
@@ -172,7 +173,7 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
                 <div className="dashboard-stat stat-total">
                     <span>Waiting now</span>
                     <strong>{queue?.waiting ?? "–"}</strong>
-                    <small>Checked in, not yet called</small>
+                    <small>Checked in, not yet in a bed</small>
                 </div>
                 <div className="dashboard-stat stat-pending">
                     <span>Awaiting triage</span>
@@ -193,6 +194,13 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
                     <small>Patient has been notified</small>
                 </div>
             </div>
+
+            <BedBoard
+                board={queue?.beds}
+                busy={busy}
+                onAssign={(id, bed) => act(id, () => api.assignBed(id, bed))}
+                onDischarge={(bed) => act(bed, () => api.discharge(bed))}
+            />
 
             {alerts.map((p) => (
                 <section className="history-context atria-alert" key={p.id}>
@@ -430,6 +438,21 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
                                                     <span className={`priority-badge ${priorityClass(p.priority)}`}>
                                                         {p.priority ? PRIORITY_LABELS[p.priority] : "Awaiting triage"}
                                                     </span>
+                                                    {!p.priority && p.suggested_priority && (
+                                                        <div className="approve-row">
+                                                            <span className="dashboard-patient">
+                                                                Front desk suggests Priority {p.suggested_priority}
+                                                            </span>
+                                                            <button
+                                                                type="button"
+                                                                className="primary-button"
+                                                                disabled={busy === p.id}
+                                                                onClick={() => act(p.id, () => api.setPriority(p.id, p.suggested_priority))}
+                                                            >
+                                                                Approve P{p.suggested_priority}
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                     <select
                                                         className="priority-select"
                                                         aria-label={`Assign priority for ${p.name}`}
@@ -476,10 +499,11 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
                                                     <button
                                                         type="button"
                                                         className="link-button"
-                                                        disabled={busy === p.id}
-                                                        onClick={() => act(p.id, () => api.callIn(p.id))}
+                                                        disabled={busy === p.id || !queue?.beds.free}
+                                                        title={queue?.beds.free ? "Room in the first free bed" : "No free bed"}
+                                                        onClick={() => act(p.id, () => api.assignBed(p.id))}
                                                     >
-                                                        Call in
+                                                        {queue?.beds.free ? "Assign bed" : "No free bed"}
                                                     </button>
                                                 </td>
                                             </tr>
