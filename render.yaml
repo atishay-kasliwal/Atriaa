@@ -6,7 +6,7 @@ services:
     name: atria-api
     runtime: docker
     plan: free
-    branch: hack-er-demo
+    branch: main
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /health
