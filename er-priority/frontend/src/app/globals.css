@@ -993,3 +993,143 @@ h3 {
     align-items: flex-start;
   }
 }
+
+/* =====================================================
+   Live waiting room: intake, dashboard, Ask Atria, patient status
+   ===================================================== */
+
+/* Intake form pieces that had no styles yet */
+.intake-layout { max-width: 880px; }
+.form-section { margin-bottom: 22px; }
+.form-section h2 { margin-bottom: 6px; }
+.section-description { margin: 0 0 12px; color: var(--muted); font-size: 12px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.form-field { display: flex; flex-direction: column; gap: 6px; }
+.form-field > span { color: #334155; font-size: 12px; font-weight: 700; }
+.symptom-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.symptom-option {
+  display: flex; align-items: center; gap: 9px; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: 8px; background: #ffffff; cursor: pointer;
+}
+.symptom-option:has(input:checked) { border-color: #93c5fd; background: #eff6ff; color: #1e40af; }
+.intake-message { margin: 12px 0; padding: 10px 12px; border-radius: 8px; background: #eff6ff; color: #1e40af; font-size: 12px; }
+.form-error { display: block; margin: 8px 0; color: var(--red); font-size: 12px; }
+@media (max-width: 640px) { .form-grid { grid-template-columns: 1fr; } }
+
+/* Pain scale, shared by intake and patient status */
+.pain-scale { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: 6px; }
+.pain-scale input { position: absolute; opacity: 0; pointer-events: none; }
+.content .pain-scale button.pain-option,
+.pain-option {
+  display: grid; place-items: center; min-height: 38px; padding: 0;
+  border: 1px solid var(--border); border-radius: 8px; background: #ffffff; color: #334155;
+  font-weight: 700; cursor: pointer;
+}
+.content .pain-scale button.pain-option.selected,
+.pain-option.selected { border-color: var(--primary); background: var(--primary); color: #ffffff; }
+
+/* Sidebar additions */
+.nav-label-spaced { margin-top: 24px; }
+.sidebar a.nav-item { text-decoration: none; }
+.sidebar-indicator.offline, .status-dot.offline { background: var(--red); }
+
+/* Dashboard */
+.title-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.dashboard-stats.stats-four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 900px) { .dashboard-stats.stats-four { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat-total { border-top: 3px solid var(--primary); }
+.stat-flagged { border-top: 3px solid var(--red); }
+.stat-recheck { border-top: 3px solid #7c3aed; }
+.history-context.atria-alert { border-color: #fecaca; background: #fff5f5; margin-bottom: 10px; }
+.atria-alert .history-icon { background: #fee2e2; color: var(--red); font-size: 16px; }
+.atria-alert .history-copy strong { color: #991b1b; }
+.toolbar-right { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.dot-flag { background: var(--red); border-radius: 2px; transform: rotate(45deg); }
+
+.position-cell strong { display: block; font-size: 20px; line-height: 1.1; }
+.patient-table tbody tr.row-flagged { background: #fffafa; }
+.traj-badge {
+  display: inline-block; margin-bottom: 6px; padding: 3px 8px; border-radius: 6px;
+  font-size: 11px; font-weight: 700; border: 1px solid transparent;
+}
+.traj-red { background: #fee2e2; border-color: #fecaca; color: #991b1b; }
+.traj-amber { background: #fef3c7; border-color: #fde68a; color: #92400e; }
+.traj-green { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
+.traj-gray { background: #f1f5f9; border-color: #e2e8f0; color: #475569; }
+.vitals-line { display: block; color: var(--foreground); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.action-cell { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; min-width: 150px; }
+.action-cell .secondary-button { padding: 7px 10px; font-size: 12px; width: 100%; }
+.link-button { padding: 0; border: 0; background: none; color: var(--primary); font-size: 12px; font-weight: 700; }
+.link-button:hover { text-decoration: underline; }
+.recheck-pending {
+  padding: 6px 8px; border-radius: 6px; background: #ede9fe; color: #5b21b6;
+  font-size: 11px; font-weight: 700;
+}
+.patient-table tbody tr.recheck-row td { background: #f8fafc; }
+.recheck-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+.recheck-form > strong { align-self: center; margin-right: 6px; }
+.recheck-form label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #475569; font-weight: 700; }
+.recheck-form input { width: 110px; }
+
+/* Ask Atria */
+.ask-panel { padding: 22px; }
+.ask-controls { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+.ask-controls .form-field { max-width: 360px; }
+.ask-input-row { display: flex; gap: 10px; }
+.ask-input-row input { flex: 1; }
+.ask-thread { display: flex; flex-direction: column; gap: 14px; }
+.ask-turn { padding: 16px; border: 1px solid var(--border); border-radius: 11px; background: #fbfcfe; }
+.ask-question { display: flex; gap: 8px; align-items: center; font-weight: 700; margin-bottom: 8px; }
+.ask-answer { white-space: pre-wrap; line-height: 1.6; margin-bottom: 10px; }
+.provider-badge { padding: 2px 7px; border-radius: 5px; font-size: 11px; font-weight: 700; }
+.provider-badge.gemini { background: #dbeafe; color: #1e40af; }
+.provider-badge.fallback { background: #fef3c7; color: #92400e; }
+
+/* Patient status page (phone first) */
+.patient-shell { max-width: 560px; margin: 0 auto; padding: 24px 16px 40px; display: flex; flex-direction: column; gap: 16px; }
+.patient-brand { display: flex; align-items: center; gap: 12px; }
+.patient-brand-name { font-size: 17px; font-weight: 700; }
+.patient-card { padding: 22px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.ticket-row { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.ticket-code {
+  padding: 10px 14px; border-radius: 12px; background: var(--sidebar); color: #ffffff;
+  font-size: 28px; font-weight: 700; letter-spacing: 1px; font-variant-numeric: tabular-nums;
+}
+.stage-banner { padding: 14px 16px; border-radius: 11px; border: 1px solid; margin-bottom: 16px; }
+.stage-banner strong { display: block; font-size: 15px; margin-bottom: 4px; }
+.stage-banner p { margin: 0; font-size: 13px; }
+.stage-pending { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.stage-waiting { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+.stage-recheck { background: #f5f3ff; border-color: #c4b5fd; color: #5b21b6; }
+.stage-called { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+.line-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.line-summary div { padding: 12px; border: 1px solid var(--border); border-radius: 10px; }
+.line-summary span { display: block; color: var(--muted); font-size: 11px; }
+.line-summary strong { font-size: 24px; }
+.line-strip { display: flex; flex-wrap: wrap; gap: 6px; }
+.line-chip { padding: 5px 9px; border-radius: 7px; background: #f1f5f9; color: #475569; font-size: 12px; font-weight: 700; }
+.line-chip.you { background: var(--primary); color: #ffffff; }
+.feeling-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
+.feeling-option { padding: 12px 8px; border: 1px solid var(--border); border-radius: 10px; background: #ffffff; font-weight: 700; color: #334155; }
+.feeling-option.selected.feeling-better { border-color: var(--green); background: #dcfce7; color: #166534; }
+.feeling-option.selected.feeling-same { border-color: var(--primary); background: #dbeafe; color: #1e40af; }
+.feeling-option.selected.feeling-worse { border-color: var(--red); background: #fee2e2; color: #991b1b; }
+.field-caption { margin: 4px 0 8px; color: #334155; font-size: 12px; font-weight: 700; }
+.send-update { width: 100%; margin-top: 16px; padding: 12px; }
+@media (max-width: 420px) {
+  .pain-scale { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .line-summary strong { font-size: 20px; }
+}
+
+/* Patient-facing check-in route */
+.patient-checkin { max-width: 640px; }
+.patient-checkin .content { padding: 0; }
+.patient-checkin .content form { padding: 18px; }
+.patient-checkin .page-heading h1 { font-size: 24px; }
+
+/* Beat ".content form label { display: block }" for the option tiles */
+.content form label.symptom-option { display: flex; margin: 0; font-size: 13px; }
+.content form label.pain-option { display: grid; margin: 0; font-size: 14px; }
+.content form label.form-field { display: flex; margin: 0; }
+.content .pain-scale input[type="radio"] { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; }

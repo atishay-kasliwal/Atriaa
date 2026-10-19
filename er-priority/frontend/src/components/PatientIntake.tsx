@@ -1,11 +1,8 @@
 "use client";
 
 import {useState} from "react";
-import type {PatientCase} from "../types";
-
-type PatientIntakeProps = {
-    onCheckIn: (patient: PatientCase) => void;
-};
+import {useRouter} from "next/navigation";
+import {api} from "../lib/api";
 
 const SYMPTOMS = [
     "Chest pain",
@@ -22,14 +19,15 @@ const SYMPTOMS = [
     "Other",
 ];
 
-export default function PatientIntake({
-                                          onCheckIn,
-                                      }: PatientIntakeProps) {
+export default function PatientIntake() {
+    const router = useRouter();
     const [name, setName] = useState("");
     const [dateOfBirth, setDateOfBirth] = useState("");
     const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
     const [notes, setNotes] = useState("");
+    const [pain, setPain] = useState("");
     const [message, setMessage] = useState("");
+    const [submitting, setSubmitting] = useState(false);
 
     function toggleSymptom(symptom: string) {
         setSelectedSymptoms((current) =>
@@ -39,7 +37,7 @@ export default function PatientIntake({
         );
     }
 
-    function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
 
         if (selectedSymptoms.length === 0) {
@@ -47,27 +45,22 @@ export default function PatientIntake({
             return;
         }
 
-        const patient: PatientCase = {
-            id: `ER-${Date.now().toString().slice(-6)}`,
-            name: name.trim(),
-            dateOfBirth,
-            symptoms: selectedSymptoms,
-            notes: notes.trim(),
-            submittedAt: new Date().toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-            }),
-            priority: "",
-            status: "Awaiting human review",
-        };
-
-        onCheckIn(patient);
-
-        setName("");
-        setDateOfBirth("");
-        setSelectedSymptoms([]);
-        setNotes("");
-        setMessage("Patient checked in successfully.");
+        setSubmitting(true);
+        setMessage("");
+        try {
+            const {id} = await api.checkIn({
+                name: name.trim(),
+                date_of_birth: dateOfBirth || null,
+                symptoms: selectedSymptoms,
+                notes: notes.trim(),
+                pain: pain === "" ? null : Number(pain),
+            });
+            // The patient lands on their own place-in-line page.
+            router.push(`/status/${id}`);
+        } catch (error) {
+            setMessage(`Check-in failed: ${(error as Error).message}. Please tell the front desk.`);
+            setSubmitting(false);
+        }
     }
 
     return (
@@ -131,6 +124,27 @@ export default function PatientIntake({
                     </div>
 
                     <div className="form-section">
+                        <h2>Pain right now</h2>
+                        <p className="section-description">
+                            0 means no pain, 10 means the worst pain you can imagine.
+                        </p>
+                        <div className="pain-scale" role="radiogroup" aria-label="Pain score">
+                            {Array.from({length: 11}, (_, n) => (
+                                <label key={n} className={`pain-option ${pain === String(n) ? "selected" : ""}`}>
+                                    <input
+                                        type="radio"
+                                        name="pain"
+                                        value={n}
+                                        checked={pain === String(n)}
+                                        onChange={() => setPain(String(n))}
+                                    />
+                                    <span>{n}</span>
+                                </label>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="form-section">
                         <label className="form-field">
                             <span>Additional notes</span>
                             <textarea
@@ -148,13 +162,14 @@ export default function PatientIntake({
                         </p>
                     )}
 
-                    <button type="submit" className="primary-button">
-                        Check In Patient
+                    <button type="submit" className="primary-button" disabled={submitting}>
+                        {submitting ? "Checking in..." : "Check In Patient"}
                     </button>
 
                     <p className="form-disclaimer">
                         This demo records reported information only. A qualified human
-                        reviewer must assess the patient and assign priority.
+                        reviewer must assess the patient and assign priority. After check-in
+                        you&apos;ll see your place in line and can tell staff if you feel worse.
                     </p>
                 </form>
             </section>

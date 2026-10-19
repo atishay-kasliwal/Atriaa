@@ -1,0 +1,103 @@
+"""Live waiting room: check-in -> patient status -> staff priority/re-checks -> Atria flag."""
+import uuid
+
+import pytest
+
+
+@pytest.fixture
+def live(client):
+    client.post("/live/reset")
+    yield client
+    client.post("/live/reset")
+
+
+def check_in(c, name, symptoms, pain=None):
+    r = c.post("/checkin", json={"name": name, "date_of_birth": "1990-01-02", "symptoms": symptoms, "pain": pain})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def by_ticket(q):
+    return {v["ticket"]: v for v in q["queue"]}
+
+
+def test_checkin_shows_patient_their_place(live):
+    a = check_in(live, "Ana Demo", ["Shortness of breath"], pain=4)
+    b = check_in(live, "Ben Demo", ["Chest pain"], pain=5)
+    assert (a["ticket"], b["ticket"]) == ("W-01", "W-02")
+
+    s = live.get(f"/checkin/{a['id']}").json()
+    assert s["stage"] == "awaiting_triage" and s["line_position"] is None
+    assert s["awaiting_triage_count"] == 2
+
+    live.post(f"/live/{b['id']}/priority", json={"priority": 2})
+    live.post(f"/live/{a['id']}/priority", json={"priority": 3})
+    s = live.get(f"/checkin/{a['id']}").json()
+    assert s["stage"] == "waiting" and s["line_position"] == 2 and s["ahead"] == 1
+    # The patient sees tickets only, never other patients' names or details.
+    assert s["line"] == [{"ticket": "W-02", "you": False}, {"ticket": "W-01", "you": True}]
+    assert "Ben" not in str(s)
+
+
+def test_rechecks_flag_change_without_touching_priority(live):
+    a = check_in(live, "Ana Demo", ["Shortness of breath"], pain=4)
+    b = check_in(live, "Ben Demo", ["Chest pain"], pain=5)
+    live.post(f"/live/{a['id']}/priority", json={"priority": 3})
+    live.post(f"/live/{b['id']}/priority", json={"priority": 2})
+    for hr, spo2, pain in [(92, 98, 4), (101, 96, 5), (110, 94, 6)]:
+        assert live.post(f"/live/{a['id']}/vitals", json={"hr": hr, "spo2": spo2, "pain": pain}).status_code == 200
+
+    q = live.get("/live/queue").json()
+    t = by_ticket(q)
+    assert q["queue"][0]["ticket"] == "W-01"
+    assert t["W-01"]["reassessment_signal"] and t["W-01"]["trajectory"] == "persistent_change"
+    # Human priority and the official line are unchanged.
+    assert t["W-01"]["priority"] == 3 and t["W-01"]["line_position"] == 2
+    assert t["W-02"]["line_position"] == 1
+    assert q["flagged"] == 1 and q["awaiting_triage"] == 0
+
+
+def test_reassessment_reaches_patient_and_recheck_clears_it(live):
+    a = check_in(live, "Ana Demo", ["Dizziness"], pain=3)
+    r = live.post(f"/live/{a['id']}/reassess", json={"actor": "Charge nurse"})
+    assert r.json()["confirmed"]
+    assert live.get(f"/checkin/{a['id']}").json()["stage"] == "recheck_requested"
+    live.post(f"/live/{a['id']}/vitals", json={"hr": 88})
+    assert live.get(f"/checkin/{a['id']}").json()["stage"] == "awaiting_triage"
+
+
+def test_patient_report_feeds_atria(live):
+    a = check_in(live, "Ana Demo", ["Headache"], pain=3)
+    s = live.post(f"/checkin/{a['id']}/report", json={"pain": 6, "feeling": "worse"}).json()
+    assert s["last_update"]
+    v = by_ticket(live.get("/live/queue").json())["W-01"]
+    assert v["deltas"]["pain"] == 3
+    assert "Patient-reported worsening in notes" in v["reasons"]
+    assert live.post(f"/checkin/{a['id']}/report", json={}).status_code == 422
+
+
+def test_call_in_leaves_queue(live):
+    a = check_in(live, "Ana Demo", ["Fever"])
+    live.post(f"/live/{a['id']}/call", json={"actor": "Charge nurse"})
+    assert live.get("/live/queue").json()["waiting"] == 0
+    assert live.get(f"/checkin/{a['id']}").json()["stage"] == "called"
+    assert live.post(f"/live/{a['id']}/vitals", json={"hr": 90}).status_code == 409
+
+
+def test_live_ask_uses_priority_labels(live):
+    a = check_in(live, "Ana Demo", ["Shortness of breath"], pain=4)
+    for hr, spo2 in [(92, 98), (101, 96), (110, 94)]:
+        live.post(f"/live/{a['id']}/vitals", json={"hr": hr, "spo2": spo2})
+    out = live.post("/live/ask", json={"question": "Who should be reassessed next?", "checkin_id": a["id"]}).json()
+    assert out["provider"] == "fallback"  # no Gemini key in tests
+    assert "W-01" in out["answer"] and out["queue_version"].startswith("live@")
+
+
+def test_validation(live):
+    assert live.post("/checkin", json={"name": "X", "symptoms": []}).status_code == 422
+    assert live.post("/checkin", json={"name": "X", "symptoms": ["Cough"], "pain": 11}).status_code == 422
+    assert live.get(f"/checkin/{uuid.uuid4()}").status_code == 404
+    assert live.get("/checkin/not-a-uuid").status_code == 422
+    a = check_in(live, "Ana Demo", ["Cough"])
+    assert live.post(f"/live/{a['id']}/vitals", json={"spo2": 120}).status_code == 422
+    assert live.post(f"/live/{a['id']}/priority", json={"priority": 5}).status_code == 422

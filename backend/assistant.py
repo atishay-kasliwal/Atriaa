@@ -12,7 +12,7 @@ RULES = """You are Atria's explanation assistant for a SYNTHETIC ER waiting-room
 Rules you must follow strictly:
 - Use only the evidence below. Never invent patient facts, numbers or timestamps.
 - Never diagnose, prescribe treatment or recommend a specific clinical action. A nurse decides.
-- Keep initial intake severity (ESI, set by humans, never changed by Atria) distinct from current trajectory.
+- Keep initial intake severity (ESI or Priority, set by humans, never changed by Atria) distinct from current trajectory.
 - The Attention Queue is separate from the official triage queue.
 - If evidence is mixed or insufficient, say "evidence is mixed or limited; human review recommended".
 - Cite bay names, values with units and HH:MM UTC times from the evidence, and mention the queue version once.
@@ -109,12 +109,19 @@ def _vals(point: dict) -> str:
     return ", ".join(parts) or "no measurements"
 
 
+def severity(v: dict) -> str:
+    """Human intake label: ESI in the replay, Priority 1-3 for live check-ins."""
+    if v.get("initial_triage") is None:
+        return "priority not yet assigned"
+    return f"{v.get('severity_label', 'ESI')} {v['initial_triage']}"
+
+
 def patient_line(v: dict, full: bool = True) -> str:
     d = v["deltas"]
     lines = [
         f"[{v['bay']}] attention position {v['attention_position']}"
         + (f" (previous {v['previous_position']})" if v.get("previous_position") else "")
-        + f"; intake ESI {v['initial_triage']} (unchanged); complaint: {v.get('chief_complaint')}",
+        + f"; intake {severity(v)} (unchanged); complaint: {v.get('chief_complaint')}",
         f"  trajectory {v['trajectory']}; consensus {v['consensus']}; reassessment signal {v['reassessment_signal']}; waiting {v['waiting_minutes']} min",
         f"  intake at {core.hhmm(v['intake']['observed_at'])}: {_vals(v['intake'])}" if v["intake"].get("observed_at") else "  no intake reading",
         f"  current (latest {core.hhmm(v['current']['observed_at'])}): {_vals(v['current'])}" if v["current"].get("observed_at") else "",
@@ -136,7 +143,7 @@ def patient_line(v: dict, full: bool = True) -> str:
 def evidence_text(queue: dict, detail: Optional[dict] = None) -> str:
     head = (
         f"queue_version {queue['queue_version']}; as_of {core.hhmm(queue['as_of'])} UTC; "
-        f"policy {queue['policy_version']}; all data synthetic; open model unavailable"
+        f"policy {queue['policy_version']}; {queue.get('data_note', 'all data synthetic')}; open model unavailable"
     )
     body = "\n".join(patient_line(v) for v in queue["queue"])
     extra = ""
@@ -174,7 +181,7 @@ def _change(v: dict) -> str:
     if not v["current"].get("observed_at"):
         return f"{v['bay']} has no readings yet."
     return (
-        f"{v['bay']} (intake ESI {v['initial_triage']}, unchanged): intake {_vals(v['intake'])} at "
+        f"{v['bay']} (intake {severity(v)}, unchanged): intake {_vals(v['intake'])} at "
         f"{core.hhmm(v['intake']['observed_at'])}; latest {_vals(v['current'])} at {core.hhmm(v['current']['observed_at'])}; "
         f"trajectory {v['trajectory'].replace('_', ' ')}."
     )
@@ -189,7 +196,7 @@ def fallback_answer(question: str, queue: dict) -> str:
         return (
             f"{a['bay']} is at attention position {a['attention_position']} and {b['bay']} at {b['attention_position']}. "
             f"{a['bay']}: {a['reasons'][0]}. {b['bay']}: {b['reasons'][0]}. "
-            f"Intake labels are unchanged: {a['bay']} ESI {a['initial_triage']}, {b['bay']} ESI {b['initial_triage']}.\n"
+            f"Intake labels are unchanged: {a['bay']} {severity(a)}, {b['bay']} {severity(b)}.\n"
             f"{_change(a)}\n{_change(b)}\n{tail}"
         )
     if len(bays) == 1:
@@ -198,7 +205,7 @@ def fallback_answer(question: str, queue: dict) -> str:
         return f"{_change(v)}\n" + "\n".join(f"- {f}" for f in findings[:4]) + f"\n{tail}"
     signalled = [v for v in q if v["reassessment_signal"]]
     if "lower" in question.lower() and "sever" in question.lower():
-        changing = [v for v in q if v["trajectory"] != "stable" and v["trajectory"] != "insufficient_data" and v["initial_triage"] >= 3]
+        changing = [v for v in q if v["trajectory"] != "stable" and v["trajectory"] != "insufficient_data" and (v["initial_triage"] or 0) >= 3]
         if not changing:
             return f"No lower-initial-severity patient shows change yet. {tail}"
         return "\n".join(_change(v) for v in changing) + f"\n{tail}"

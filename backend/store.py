@@ -22,6 +22,7 @@ class MemoryStore:
         self.events: list[dict] = []
         self.audit: list[dict] = []
         self.run: Optional[dict] = None
+        self.checkins: dict[str, dict] = {}
 
     def list_patients(self, ids):
         return [dict(p) for p in self.patients.values() if p["id"] in ids]
@@ -63,6 +64,43 @@ class MemoryStore:
             out = {"id": str(uuid.uuid4()), "created_at": now_iso(), **row}
             self.audit.append(out)
             return dict(out)
+
+    # ---------- live check-ins ----------
+
+    def insert_checkin(self, row):
+        with self._lock:
+            out = {"created_at": now_iso(), "updated_at": now_iso(), "status": "waiting",
+                   "priority": None, "reassessment_requested_at": None, **row}
+            self.checkins[row["id"]] = out
+            return dict(out)
+
+    def list_checkins(self):
+        return sorted((dict(c) for c in self.checkins.values()), key=lambda c: c["created_at"])
+
+    def get_checkin(self, checkin_id):
+        c = self.checkins.get(checkin_id)
+        return dict(c) if c else None
+
+    def update_checkin(self, checkin_id, fields):
+        with self._lock:
+            if checkin_id not in self.checkins:
+                return None
+            self.checkins[checkin_id].update({**fields, "updated_at": now_iso()})
+            return dict(self.checkins[checkin_id])
+
+    def update_patient(self, patient_id, fields):
+        with self._lock:
+            if patient_id in self.patients:
+                self.patients[patient_id].update(fields)
+
+    def delete_patients(self, ids):
+        # Mirrors ON DELETE CASCADE in Postgres.
+        with self._lock:
+            ids = set(ids)
+            self.patients = {k: v for k, v in self.patients.items() if k not in ids}
+            self.events = [e for e in self.events if e["patient_id"] not in ids]
+            self.audit = [a for a in self.audit if a["patient_id"] not in ids]
+            self.checkins = {k: v for k, v in self.checkins.items() if k not in ids}
 
     def get_run(self):
         return dict(self.run) if self.run else None
@@ -130,3 +168,30 @@ class SupabaseStore:
         if not res.data:
             raise StoreError("run state write was not confirmed")
         return res.data[0]
+
+    # ---------- live check-ins ----------
+
+    def insert_checkin(self, row):
+        res = self._t("checkins").insert(row).execute()
+        if not res.data:
+            raise StoreError("check-in write was not confirmed")
+        return res.data[0]
+
+    def list_checkins(self):
+        return self._t("checkins").select("*").order("created_at").execute().data
+
+    def get_checkin(self, checkin_id):
+        rows = self._t("checkins").select("*").eq("id", checkin_id).limit(1).execute().data
+        return rows[0] if rows else None
+
+    def update_checkin(self, checkin_id, fields):
+        rows = self._t("checkins").update({**fields, "updated_at": now_iso()}).eq("id", checkin_id).execute().data
+        return rows[0] if rows else None
+
+    def update_patient(self, patient_id, fields):
+        self._t("patients").update(fields).eq("id", patient_id).execute()
+
+    def delete_patients(self, ids):
+        # events, audit_log and checkins cascade from patients.
+        if ids:
+            self._t("patients").delete().in_("id", list(ids)).execute()

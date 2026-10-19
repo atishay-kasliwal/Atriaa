@@ -1,63 +1,149 @@
-
 "use client";
 
-import { useMemo, useState } from "react";
-import type { PatientCase, Priority } from "../types";
-import { PRIORITIES } from "../types";
+import { Fragment, useMemo, useState } from "react";
+import { api, clock, since } from "../lib/api";
+import type { LivePatient, LiveQueue, PriorityLevel, Trajectory } from "../types";
+import { PRIORITIES, PRIORITY_LABELS } from "../types";
 
 type ERAdminDashboardProps = {
-    cases: PatientCase[];
-    onAssignPriority: (id: string, priority: Priority | "") => void;
+    queue: LiveQueue | null;
+    error: string;
+    refresh: () => Promise<void>;
     onGoToIntake: () => void;
+    onAsk: (patient: LivePatient) => void;
 };
 
-type QueueFilter = "all" | "awaiting" | "assigned";
+type QueueFilter = "all" | "triage" | "flagged" | "recheck";
+type SortMode = "attention" | "line";
 
-function priorityClass(priority: Priority | "") {
-    if (priority.startsWith("Priority 1")) return "priority-high";
-    if (priority.startsWith("Priority 2")) return "priority-medium";
-    if (priority.startsWith("Priority 3")) return "priority-low";
+const TRAJECTORY: Record<Trajectory, { label: string; tone: string }> = {
+    persistent_change: { label: "Persistent change", tone: "traj-red" },
+    mixed_change: { label: "Mixed change", tone: "traj-amber" },
+    transient_change: { label: "Transient change", tone: "traj-amber" },
+    stable: { label: "Stable", tone: "traj-green" },
+    insufficient_data: { label: "Check-in reading only", tone: "traj-gray" },
+};
+
+function priorityClass(priority: PriorityLevel | null) {
+    if (priority === 1) return "priority-high";
+    if (priority === 2) return "priority-medium";
+    if (priority === 3) return "priority-low";
     return "priority-unreviewed";
 }
 
-export default function ERAdminDashboard({
-                                             cases,
-                                             onAssignPriority,
-                                             onGoToIntake,
-                                         }: ERAdminDashboardProps) {
+function delta(v: number | null | undefined) {
+    if (v == null || v === 0) return "";
+    return v > 0 ? ` (+${v})` : ` (${v})`;
+}
+
+function Vitals({ p }: { p: LivePatient }) {
+    const c = p.current;
+    const parts = [
+        c.hr != null && `HR ${c.hr}${delta(p.deltas.hr)}`,
+        c.spo2 != null && `SpO2 ${c.spo2}%${delta(p.deltas.spo2)}`,
+        c.pain != null && `Pain ${c.pain}/10${delta(p.deltas.pain)}`,
+    ].filter(Boolean);
+    return <span className="vitals-line">{parts.length ? parts.join(" · ") : "No readings yet"}</span>;
+}
+
+function RecheckForm({ patient, onDone }: { patient: LivePatient; onDone: () => Promise<void> }) {
+    const [hr, setHr] = useState("");
+    const [spo2, setSpo2] = useState("");
+    const [pain, setPain] = useState("");
+    const [error, setError] = useState("");
+    const [saving, setSaving] = useState(false);
+
+    async function save() {
+        const body = {
+            ...(hr ? { hr: Number(hr) } : {}),
+            ...(spo2 ? { spo2: Number(spo2) } : {}),
+            ...(pain ? { pain: Number(pain) } : {}),
+        };
+        if (!Object.keys(body).length) {
+            setError("Enter at least one reading.");
+            return;
+        }
+        setSaving(true);
+        try {
+            await api.recordVitals(patient.id, body);
+            await onDone();
+        } catch (e) {
+            setError((e as Error).message);
+            setSaving(false);
+        }
+    }
+
+    return (
+        <div className="recheck-form" onKeyDown={(e) => e.key === "Enter" && save()}>
+            <strong>Re-check {patient.ticket}</strong>
+            <label>
+                <span>Heart rate</span>
+                <input inputMode="numeric" placeholder="bpm" value={hr} onChange={(e) => setHr(e.target.value)} autoFocus />
+            </label>
+            <label>
+                <span>SpO2</span>
+                <input inputMode="numeric" placeholder="%" value={spo2} onChange={(e) => setSpo2(e.target.value)} />
+            </label>
+            <label>
+                <span>Pain</span>
+                <input inputMode="numeric" placeholder="0–10" value={pain} onChange={(e) => setPain(e.target.value)} />
+            </label>
+            <button type="button" className="primary-button" disabled={saving} onClick={save}>
+                {saving ? "Saving…" : "Save re-check"}
+            </button>
+            {error && <span className="form-error">{error}</span>}
+        </div>
+    );
+}
+
+export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, onAsk }: ERAdminDashboardProps) {
     const [filter, setFilter] = useState<QueueFilter>("all");
+    const [sort, setSort] = useState<SortMode>("attention");
     const [search, setSearch] = useState("");
+    const [recheckId, setRecheckId] = useState<string | null>(null);
+    const [busy, setBusy] = useState<string | null>(null);
+    const [actionError, setActionError] = useState("");
 
-    const awaitingReview = cases.filter(
-        (patient) => patient.status === "Awaiting human review"
-    ).length;
+    const patients = useMemo(() => queue?.queue ?? [], [queue]);
+    const recheckRequested = patients.filter((p) => p.reassessment_requested_at).length;
+    const flagged = patients.filter((p) => p.reassessment_signal);
 
-    const priorityAssigned = cases.length - awaitingReview;
-
-    const filteredCases = useMemo(() => {
+    const rows = useMemo(() => {
         const term = search.trim().toLowerCase();
-
-        return cases.filter((patient) => {
+        const matched = patients.filter((p) => {
             const matchesFilter =
                 filter === "all" ||
-                (filter === "awaiting" &&
-                    patient.status === "Awaiting human review") ||
-                (filter === "assigned" &&
-                    patient.status === "Priority assigned");
-
-            const searchableText = [
-                patient.name,
-                patient.id,
-                patient.dateOfBirth,
-                patient.notes,
-                ...patient.symptoms,
-            ]
-                .join(" ")
-                .toLowerCase();
-
-            return matchesFilter && (!term || searchableText.includes(term));
+                (filter === "triage" && !p.priority) ||
+                (filter === "flagged" && p.reassessment_signal) ||
+                (filter === "recheck" && p.reassessment_requested_at);
+            const text = [p.name, p.ticket, p.date_of_birth, p.notes, ...p.symptoms].join(" ").toLowerCase();
+            return matchesFilter && (!term || text.includes(term));
         });
-    }, [cases, filter, search]);
+        if (sort === "line") {
+            return [...matched].sort(
+                (a, b) => (a.line_position ?? 999) - (b.line_position ?? 999) || a.checked_in_at.localeCompare(b.checked_in_at)
+            );
+        }
+        return matched;
+    }, [patients, filter, search, sort]);
+
+    async function act(id: string, fn: () => Promise<unknown>) {
+        setBusy(id);
+        setActionError("");
+        try {
+            await fn();
+            await refresh();
+        } catch (e) {
+            setActionError((e as Error).message);
+        } finally {
+            setBusy(null);
+        }
+    }
+
+    async function clearDemo() {
+        if (!window.confirm("Remove every demo check-in from the waiting room?")) return;
+        await act("reset", () => api.reset());
+    }
 
     return (
         <section className="dashboard-main">
@@ -66,136 +152,177 @@ export default function ERAdminDashboard({
                     <p className="eyebrow">EMERGENCY DEPARTMENT</p>
                     <h1>ER Patient Queue</h1>
                     <p className="dashboard-subtitle">
-                        Review every checked-in patient, historical context, and
-                        human-assigned priority.
+                        Staff set priority. Atria watches what changes after check-in and flags who may need a
+                        re-check.
                     </p>
                 </div>
-
-                <button
-                    type="button"
-                    className="primary-button"
-                    onClick={onGoToIntake}
-                >
-                    + Check In Patient
-                </button>
+                <div className="title-actions">
+                    <button type="button" className="secondary-button" onClick={clearDemo} disabled={busy === "reset"}>
+                        Clear demo
+                    </button>
+                    <button type="button" className="primary-button" onClick={onGoToIntake}>
+                        + Check In Patient
+                    </button>
+                </div>
             </div>
 
-            <div className="dashboard-stats">
+            <div className="dashboard-stats stats-four">
                 <div className="dashboard-stat stat-total">
-                    <span>Total checked in</span>
-                    <strong>{cases.length}</strong>
-                    <small>All registered patients</small>
+                    <span>Waiting now</span>
+                    <strong>{queue?.waiting ?? "–"}</strong>
+                    <small>Checked in, not yet called</small>
                 </div>
-
                 <div className="dashboard-stat stat-pending">
-                    <span>Awaiting review</span>
-                    <strong>{awaitingReview}</strong>
-                    <small>Human assessment needed</small>
+                    <span>Awaiting triage</span>
+                    <strong>{queue?.awaiting_triage ?? "–"}</strong>
+                    <small>Need a human priority</small>
                 </div>
-
-                <div className="dashboard-stat stat-reviewed">
-                    <span>Priority assigned</span>
-                    <strong>{priorityAssigned}</strong>
-                    <small>Reviewed by staff</small>
+                <div className="dashboard-stat stat-flagged">
+                    <span>Flagged by Atria</span>
+                    <strong>{queue?.flagged ?? "–"}</strong>
+                    <small>Persistent change since check-in</small>
+                </div>
+                <div className="dashboard-stat stat-recheck">
+                    <span>Re-check requested</span>
+                    <strong>{recheckRequested}</strong>
+                    <small>Patient has been notified</small>
                 </div>
             </div>
 
-            <section className="history-context">
-                <div className="history-icon">↻</div>
-                <div className="history-copy">
-                    <strong>Historical ER context</strong>
-                    <p>
-                        Historical encounter data is not connected yet. Once integrated,
-                        this area can show retrieved prior ER visits, encounter dates,
-                        documented conditions, and visit outcomes for reviewer reference.
-                    </p>
-                </div>
-                <span className="history-connection">Not connected</span>
-            </section>
+            {flagged.length > 0 ? (
+                flagged.map((p) => (
+                    <section className="history-context atria-alert" key={p.id}>
+                        <div className="history-icon">▲</div>
+                        <div className="history-copy">
+                            <strong>
+                                Atria · {p.ticket} {p.name}: {p.reasons[0]}
+                            </strong>
+                            <p>
+                                <Vitals p={p} />
+                                {p.priority ? `${PRIORITY_LABELS[p.priority]} (unchanged)` : "No priority yet"}. A nurse
+                                decides what happens next.
+                            </p>
+                        </div>
+                        {p.reassessment_requested_at ? (
+                            <span className="history-connection">Re-check requested {clock(p.reassessment_requested_at)}</span>
+                        ) : (
+                            <button
+                                type="button"
+                                className="primary-button"
+                                disabled={busy === p.id}
+                                onClick={() => act(p.id, () => api.requestReassessment(p.id))}
+                            >
+                                Request re-check
+                            </button>
+                        )}
+                    </section>
+                ))
+            ) : (
+                <section className="history-context">
+                    <div className="history-icon">↻</div>
+                    <div className="history-copy">
+                        <strong>Atria is watching {queue?.waiting ?? 0} waiting patients</strong>
+                        <p>
+                            Readings come from staff re-checks on this page and from patients&apos; own updates on their
+                            phones. No one has worsened on every reading since check-in.
+                        </p>
+                    </div>
+                    <span className="history-connection">Live</span>
+                </section>
+            )}
+
+            {(error || actionError) && (
+                <p className="form-error" role="alert">
+                    {actionError || `Can't reach the Atria backend: ${error}`}
+                </p>
+            )}
 
             <section className="dashboard-section">
                 <div className="section-heading queue-heading">
                     <div>
-                        <h2>All checked-in patients</h2>
+                        <h2>Waiting room</h2>
                         <p>
-                            Review reported symptoms and assign priority using qualified
-                            human judgment.
+                            {sort === "attention"
+                                ? "Ordered by Atria's attention list: who changed most since check-in. Priority stays with staff."
+                                : "Ordered by the official line: human priority, then check-in time."}
                         </p>
                     </div>
                     <span className="patient-count">
-            {filteredCases.length} of {cases.length}
-          </span>
+                        {rows.length} of {patients.length} · updated {queue ? clock(queue.as_of) : "—"}
+                    </span>
                 </div>
 
                 <div className="queue-toolbar">
                     <div className="queue-filters" aria-label="Filter patient queue">
-                        <button
-                            type="button"
-                            className={`queue-filter ${filter === "all" ? "selected" : ""}`}
-                            onClick={() => setFilter("all")}
-                        >
-                            All patients ({cases.length})
-                        </button>
-                        <button
-                            type="button"
-                            className={`queue-filter ${filter === "awaiting" ? "selected" : ""}`}
-                            onClick={() => setFilter("awaiting")}
-                        >
-                            Awaiting review ({awaitingReview})
-                        </button>
-                        <button
-                            type="button"
-                            className={`queue-filter ${filter === "assigned" ? "selected" : ""}`}
-                            onClick={() => setFilter("assigned")}
-                        >
-                            Assigned ({priorityAssigned})
-                        </button>
+                        {(
+                            [
+                                ["all", `All (${patients.length})`],
+                                ["triage", `Awaiting triage (${queue?.awaiting_triage ?? 0})`],
+                                ["flagged", `Flagged (${flagged.length})`],
+                                ["recheck", `Re-check requested (${recheckRequested})`],
+                            ] as [QueueFilter, string][]
+                        ).map(([key, label]) => (
+                            <button
+                                key={key}
+                                type="button"
+                                className={`queue-filter ${filter === key ? "selected" : ""}`}
+                                onClick={() => setFilter(key)}
+                            >
+                                {label}
+                            </button>
+                        ))}
                     </div>
-
-                    <input
-                        className="queue-search"
-                        type="search"
-                        placeholder="Search patient, ID, symptom..."
-                        aria-label="Search patients"
-                        value={search}
-                        onChange={(event) => setSearch(event.target.value)}
-                    />
+                    <div className="toolbar-right">
+                        <div className="queue-filters" aria-label="Sort">
+                            <button
+                                type="button"
+                                className={`queue-filter ${sort === "attention" ? "selected" : ""}`}
+                                onClick={() => setSort("attention")}
+                            >
+                                Atria attention
+                            </button>
+                            <button
+                                type="button"
+                                className={`queue-filter ${sort === "line" ? "selected" : ""}`}
+                                onClick={() => setSort("line")}
+                            >
+                                Official line
+                            </button>
+                        </div>
+                        <input
+                            className="queue-search"
+                            type="search"
+                            placeholder="Search patient, ticket, symptom..."
+                            aria-label="Search patients"
+                            value={search}
+                            onChange={(event) => setSearch(event.target.value)}
+                        />
+                    </div>
                 </div>
 
                 <div className="priority-legend">
                     <span><i className="legend-dot dot-high" /> Priority 1</span>
                     <span><i className="legend-dot dot-medium" /> Priority 2</span>
                     <span><i className="legend-dot dot-low" /> Priority 3</span>
-                    <span><i className="legend-dot dot-unreviewed" /> Awaiting review</span>
+                    <span><i className="legend-dot dot-unreviewed" /> Awaiting triage</span>
+                    <span><i className="legend-dot dot-flag" /> Atria flag (separate from priority)</span>
                 </div>
 
-                {cases.length === 0 ? (
+                {!queue && !error ? (
+                    <div className="empty-state"><p>Loading waiting room…</p></div>
+                ) : patients.length === 0 ? (
                     <div className="empty-state">
                         <h3>No patients checked in yet</h3>
-                        <p>
-                            Checked-in patients will appear here with their reported
-                            symptoms and a human priority selector.
-                        </p>
-                        <button
-                            type="button"
-                            className="primary-button"
-                            onClick={onGoToIntake}
-                        >
+                        <p>Patients who check in appear here with their symptoms, priority and change since check-in.</p>
+                        <button type="button" className="primary-button" onClick={onGoToIntake}>
                             Open Patient Intake
                         </button>
                     </div>
-                ) : filteredCases.length === 0 ? (
+                ) : rows.length === 0 ? (
                     <div className="empty-state">
                         <h3>No matching patients</h3>
-                        <p>Try another search term or select a different queue filter.</p>
-                        <button
-                            type="button"
-                            className="secondary-button"
-                            onClick={() => {
-                                setSearch("");
-                                setFilter("all");
-                            }}
-                        >
+                        <p>Try another search term or select a different filter.</p>
+                        <button type="button" className="secondary-button" onClick={() => { setSearch(""); setFilter("all"); }}>
                             Clear filters
                         </button>
                     </div>
@@ -203,103 +330,130 @@ export default function ERAdminDashboard({
                     <div className="patient-table-wrap">
                         <table className="patient-table">
                             <thead>
-                            <tr>
-                                <th>Patient</th>
-                                <th>Reported symptoms</th>
-                                <th>Check-in time</th>
-                                <th>Historical ER data</th>
-                                <th>Human-assigned priority</th>
-                            </tr>
-                            </thead>
-
-                            <tbody>
-                            {filteredCases.map((patient) => (
-                                <tr
-                                    key={patient.id}
-                                    className={
-                                        patient.priority
-                                            ? priorityClass(patient.priority)
-                                            : "priority-unreviewed"
-                                    }
-                                >
-                                    <td>
-                                        <strong className="patient-name">
-                                            {patient.name}
-                                        </strong>
-                                        <span className="dashboard-patient">
-                        {patient.id}
-                      </span>
-                                        <span className="dashboard-patient">
-                        DOB: {patient.dateOfBirth || "Not provided"}
-                      </span>
-                                    </td>
-
-                                    <td>
-                                        <div className="symptom-tags">
-                                            {patient.symptoms.length > 0 ? (
-                                                patient.symptoms.map((symptom) => (
-                                                    <span className="symptom-tag" key={symptom}>
-                              {symptom}
-                            </span>
-                                                ))
-                                            ) : (
-                                                <span className="dashboard-patient">
-                            No symptoms recorded
-                          </span>
-                                            )}
-                                        </div>
-                                        {patient.notes && (
-                                            <p className="queue-notes">{patient.notes}</p>
-                                        )}
-                                    </td>
-
-                                    <td className="queue-time">
-                                        {patient.submittedAt}
-                                    </td>
-
-                                    <td>
-                      <span className="history-unavailable">
-                        Not connected
-                      </span>
-                                        <span className="dashboard-patient">
-                        No historical records retrieved
-                      </span>
-                                    </td>
-
-                                    <td>
-                      <span
-                          className={`priority-badge ${priorityClass(
-                              patient.priority
-                          )}`}
-                      >
-                        {patient.priority || "Awaiting review"}
-                      </span>
-
-                                        <select
-                                            className="priority-select"
-                                            aria-label={`Assign priority for ${patient.name}`}
-                                            value={patient.priority}
-                                            onChange={(event) =>
-                                                onAssignPriority(
-                                                    patient.id,
-                                                    event.target.value as Priority | ""
-                                                )
-                                            }
-                                        >
-                                            <option value="">Assign priority...</option>
-                                            {PRIORITIES.map((priority) => (
-                                                <option value={priority} key={priority}>
-                                                    {priority}
-                                                </option>
-                                            ))}
-                                        </select>
-
-                                        <span className="dashboard-patient">
-                        {patient.status}
-                      </span>
-                                    </td>
+                                <tr>
+                                    <th>{sort === "attention" ? "Attention" : "Line"}</th>
+                                    <th>Patient</th>
+                                    <th>Reported symptoms</th>
+                                    <th>Since check-in (Atria)</th>
+                                    <th>Human-assigned priority</th>
+                                    <th>Actions</th>
                                 </tr>
-                            ))}
+                            </thead>
+                            <tbody>
+                                {rows.map((p) => {
+                                    const traj = TRAJECTORY[p.trajectory];
+                                    return (
+                                        <Fragment key={p.id}>
+                                            <tr className={`${priorityClass(p.priority)} ${p.reassessment_signal ? "row-flagged" : ""}`}>
+                                                <td className="position-cell">
+                                                    <strong>
+                                                        {sort === "attention" ? p.attention_position : p.line_position ?? "–"}
+                                                    </strong>
+                                                    <span className="dashboard-patient">
+                                                        {p.line_position ? `Line #${p.line_position}` : "Triage pending"}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <strong className="patient-name">{p.name}</strong>
+                                                    <span className="dashboard-patient">{p.ticket} · DOB {p.date_of_birth || "not provided"}</span>
+                                                    <span className="dashboard-patient">
+                                                        Checked in {clock(p.checked_in_at)} · {p.waiting_minutes} min
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <div className="symptom-tags">
+                                                        {p.symptoms.map((s) => (
+                                                            <span className="symptom-tag" key={s}>{s}</span>
+                                                        ))}
+                                                    </div>
+                                                    {p.notes && <p className="queue-notes">{p.notes}</p>}
+                                                </td>
+                                                <td>
+                                                    <span className={`traj-badge ${traj.tone}`}>
+                                                        {p.reassessment_signal ? "▲ " : ""}
+                                                        {traj.label}
+                                                    </span>
+                                                    <Vitals p={p} />
+                                                    <span className="dashboard-patient">
+                                                        {p.readings} reading{p.readings === 1 ? "" : "s"} · last {since(p.current.observed_at)}
+                                                    </span>
+                                                    {p.trajectory !== "stable" && p.trajectory !== "insufficient_data" && (
+                                                        <span className="dashboard-patient">{p.reasons[0]}</span>
+                                                    )}
+                                                </td>
+                                                <td>
+                                                    <span className={`priority-badge ${priorityClass(p.priority)}`}>
+                                                        {p.priority ? PRIORITY_LABELS[p.priority] : "Awaiting triage"}
+                                                    </span>
+                                                    <select
+                                                        className="priority-select"
+                                                        aria-label={`Assign priority for ${p.name}`}
+                                                        value={p.priority ?? ""}
+                                                        disabled={busy === p.id}
+                                                        onChange={(e) =>
+                                                            act(p.id, () =>
+                                                                api.setPriority(
+                                                                    p.id,
+                                                                    e.target.value ? (Number(e.target.value) as PriorityLevel) : null
+                                                                )
+                                                            )
+                                                        }
+                                                    >
+                                                        <option value="">Assign priority...</option>
+                                                        {PRIORITIES.map((level) => (
+                                                            <option value={level} key={level}>{PRIORITY_LABELS[level]}</option>
+                                                        ))}
+                                                    </select>
+                                                </td>
+                                                <td className="action-cell">
+                                                    <button
+                                                        type="button"
+                                                        className="secondary-button"
+                                                        onClick={() => setRecheckId(recheckId === p.id ? null : p.id)}
+                                                    >
+                                                        {recheckId === p.id ? "Cancel" : "Record re-check"}
+                                                    </button>
+                                                    {p.reassessment_requested_at ? (
+                                                        <span className="recheck-pending">Re-check requested {clock(p.reassessment_requested_at)}</span>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            className="secondary-button"
+                                                            disabled={busy === p.id}
+                                                            onClick={() => act(p.id, () => api.requestReassessment(p.id))}
+                                                        >
+                                                            Request re-check
+                                                        </button>
+                                                    )}
+                                                    <button type="button" className="link-button" onClick={() => onAsk(p)}>
+                                                        Ask Atria
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="link-button"
+                                                        disabled={busy === p.id}
+                                                        onClick={() => act(p.id, () => api.callIn(p.id))}
+                                                    >
+                                                        Call in
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {recheckId === p.id && (
+                                                <tr className="recheck-row">
+                                                    <td colSpan={6}>
+                                                        <RecheckForm
+                                                            patient={p}
+                                                            onDone={async () => {
+                                                                setRecheckId(null);
+                                                                await refresh();
+                                                            }}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </Fragment>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
@@ -307,9 +461,8 @@ export default function ERAdminDashboard({
             </section>
 
             <p className="form-disclaimer">
-                Hackathon demo using synthetic intake data. Historical ER records are
-                not yet integrated. Colors represent human-assigned priority only;
-                this dashboard does not diagnose or autonomously triage patients.
+                Hackathon demo with made-up check-ins. Colors show human-assigned priority. Atria flags change since
+                check-in for a nurse to review; it never diagnoses, changes priority or decides treatment.
             </p>
         </section>
     );
