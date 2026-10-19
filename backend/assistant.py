@@ -41,8 +41,10 @@ class Assistant:
                     retry_options=types.HttpRetryOptions(attempts=1),
                 ),
             )
+            # MINIMAL keeps Ask Atria answers to a few seconds; LOW measured up to ~9 s.
+            level = os.environ.get("GEMINI_THINKING_LEVEL", "MINIMAL").upper()
             self._config = types.GenerateContentConfig(
-                thinking_config=types.ThinkingConfig(thinking_level=types.ThinkingLevel.LOW),
+                thinking_config=types.ThinkingConfig(thinking_level=getattr(types.ThinkingLevel, level)),
             )
         return self._client
 

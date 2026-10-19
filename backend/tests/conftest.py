@@ -4,7 +4,7 @@ from pathlib import Path
 
 os.environ["ATRIA_STORE"] = "memory"
 os.environ["GEMINI_API_KEY"] = ""
-os.environ.pop("SENTRY_DSN", None)
+os.environ["SENTRY_DSN"] = ""  # empty, not unset: main.py would reload it from .env.local
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import pytest  # noqa: E402

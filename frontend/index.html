@@ -74,13 +74,34 @@
   .provider { font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
   .provider.gemini { background: var(--blue-bg); color: var(--blue); }
   .provider.fallback { background: var(--amber-bg); color: var(--amber); }
-  #raleighView { display: none; padding: 16px 20px; }
-  #map { height: 460px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
-  .real { background: var(--blue-bg); color: var(--blue); }
-  .synthetic { background: var(--amber-bg); color: var(--amber); }
-  .stats { display: flex; flex-wrap: wrap; gap: 10px; margin: 10px 0; }
-  .stat { background: var(--bg); border: 1px solid var(--line2); border-radius: 6px; padding: 8px 12px; }
-  .stat b { font-size: 18px; display: block; }
+  #raleighView { display: none; padding: 20px; max-width: 1400px; margin: 0 auto; }
+  .hero { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 16px; }
+  .hero h2 { font-size: 22px; margin: 0 0 6px; font-weight: 650; letter-spacing: -.01em; }
+  .hero p { margin: 0; color: var(--muted); font-size: 13px; max-width: 640px; line-height: 1.5; }
+  .eyebrow { color: var(--accent); font-size: 11px; letter-spacing: .1em; font-weight: 600; text-transform: uppercase; margin-bottom: 6px; }
+  .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+  @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .stat b { font-size: 24px; display: block; font-variant-numeric: tabular-nums; }
+  .caps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+  @media (max-width: 980px) { .caps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 520px) { .caps { grid-template-columns: 1fr; } }
+  .cap { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+  .cap b { display: block; font-size: 13px; margin-bottom: 4px; }
+  .cap span { color: var(--muted); font-size: 12px; line-height: 1.45; }
+  .cap i { font-style: normal; color: var(--accent); font-weight: 700; margin-right: 6px; }
+  .region { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; }
+  @media (max-width: 980px) { .region { grid-template-columns: 1fr; } }
+  #map { height: 520px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
+  .facList { max-height: 452px; overflow-y: auto; margin-top: 8px; }
+  .fac { padding: 8px 6px; border-bottom: 1px solid var(--line2); cursor: pointer; display: flex; gap: 10px; align-items: flex-start; }
+  .fac:hover { background: #1c1f28; }
+  .fac .dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 4px; flex: none; }
+  .fac b { display: block; font-weight: 550; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; color: var(--muted); font-size: 11px; }
+  .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  .legend .dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .srcline { margin-top: 14px; }
   .error { color: var(--red); }
   .leaflet-container { background: #1a1d24; }
 </style>
@@ -91,7 +112,7 @@
   <span class="tag">SYNTHETIC DEMO &mdash; not a medical device, not validated for clinical use</span>
   <nav>
     <button id="tabBoard" class="active" onclick="showTab('board')">Waiting Room</button>
-    <button id="tabRaleigh" onclick="showTab('raleigh')">Raleigh Overview</button>
+    <button id="tabRaleigh" onclick="showTab('raleigh')">Region</button>
   </nav>
 </header>
 
@@ -139,17 +160,42 @@
 </div>
 
 <div id="raleighView">
-  <div class="panel">
-    <h3>Raleigh / Wake County emergency resources <span class="badge real">REAL PUBLIC DATA</span></h3>
-    <p class="muted">Public facility locations and listed services from Wake County GIS. This view has no capacity, wait-time or diversion data.
-      The waiting room on the other tab is a <span class="badge synthetic">SYNTHETIC ATRIA DEMO</span> ED and is not any facility shown here.</p>
-    <div class="stats" id="raleighStats"></div>
-    <div id="map"></div>
-    <p class="muted small" id="raleighSource"></p>
-    <h4>Facilities</h4>
-    <div class="scroll"><table><thead><tr><th>Name</th><th>Type</th><th>Services</th><th>Address</th><th>County</th></tr></thead><tbody id="raleighBody"></tbody></table></div>
-    <ul class="muted small" id="raleighLimits"></ul>
+  <div class="hero">
+    <div>
+      <div class="eyebrow">Atria · Raleigh region</div>
+      <h2>Every waiting room, watched after triage.</h2>
+      <p>Triage captures how a patient looks at the door. Atria keeps watching while they wait: it reads each new vital and observation,
+        flags sustained change, and tells the charge nurse who may need a second look, with the evidence. These are the
+        emergency departments across the Triangle that Atria is built to run in.</p>
+    </div>
+    <button class="go" onclick="showTab('board')">Open the waiting room &rarr;</button>
   </div>
+
+  <div class="stats" id="raleighStats"></div>
+
+  <div class="caps">
+    <div class="cap"><b><i>01</i>Watches after triage</b><span>Re-reads heart rate, SpO₂, pain and nurse observations as they arrive, for every patient in the waiting room.</span></div>
+    <div class="cap"><b><i>02</i>Separates signal from noise</b><span>Sustained change across signals rises in the queue. One-off spikes are marked transient and settle back.</span></div>
+    <div class="cap"><b><i>03</i>Explains every ranking</b><span>Ask Atria answers in plain language and cites the actual values, times and queue version.</span></div>
+    <div class="cap"><b><i>04</i>Keeps nurses in control</b><span>Intake ESI never changes automatically. Every reassessment request is confirmed and audited.</span></div>
+  </div>
+
+  <div class="region">
+    <div>
+      <div id="map"></div>
+      <div class="legend">
+        <span><i class="dot" style="background:#ff8080"></i>Trauma center</span>
+        <span><i class="dot" style="background:#8ab4ff"></i>Hospital ED</span>
+        <span><i class="dot" style="background:#7fd49a"></i>Freestanding ED</span>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>Emergency departments</h3>
+      <div class="actions" id="facFilters"></div>
+      <div class="facList" id="raleighBody"></div>
+    </div>
+  </div>
+  <p class="muted small srcline" id="raleighSource"></p>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -382,30 +428,58 @@ async function loadRaleigh() {
   mapReady = true;
   const s = d.summary;
   document.getElementById("raleighStats").innerHTML = [
-    [s.total, "emergency facilities listed"], [s.wake_county, "in Wake County"], [s.trauma_listed, "listed Emergency/Trauma"], [s.freestanding_or_other, "type “Other” (e.g. healthplex)"],
+    [s.total, "emergency departments in the region"], [s.wake_county, "in Wake County"], [s.trauma_listed, "trauma centers"], [s.freestanding_or_other, "freestanding EDs"],
   ].map(([n, l]) => `<div class="stat"><b>${n}</b><span class="muted small">${esc(l)}</span></div>`).join("");
   const src = d.source;
+  const edited = new Date(src.source_last_edited + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   document.getElementById("raleighSource").innerHTML =
-    `Source: ${esc(src.publisher)}, “${esc(src.dataset)}” (<a style="color:var(--blue)" href="${esc(src.item_url)}" target="_blank" rel="noopener">dataset</a>). ` +
-    (src.mode === "live" ? `Live query of the public ArcGIS service. ` : `Cached snapshot retrieved ${esc(src.snapshot_retrieved)}${src.live_error ? " (live query failed)" : ""}. `) +
-    `Source last edited ${esc(src.source_last_edited)}. Map tiles © OpenStreetMap contributors.`;
-  document.getElementById("raleighBody").innerHTML = d.facilities.map(f =>
-    `<tr><td>${esc(f.name)}</td><td>${esc(f.facility_type)}</td><td>${esc(f.services)}</td><td>${esc(f.address)}, ${esc(f.city)}</td><td>${esc(f.county)}</td></tr>`).join("");
-  document.getElementById("raleighLimits").innerHTML = d.limitations.map(l => `<li>${esc(l)}</li>`).join("");
+    `Facility locations and listed services from <a style="color:var(--blue)" href="${esc(src.item_url)}" target="_blank" rel="noopener">${esc(src.publisher)}</a>, updated ${esc(edited)}. ` +
+    `Locations only; no live capacity or wait times. Map © OpenStreetMap contributors.`;
 
+  const kind = f => (f.services || "").toLowerCase().includes("trauma") ? "trauma" : f.facility_type === "Other" ? "freestanding" : "hospital";
+  const COLORS = { trauma: "#ff8080", hospital: "#8ab4ff", freestanding: "#7fd49a" };
+  const LABELS = { trauma: "Trauma center", hospital: "Hospital ED", freestanding: "Freestanding ED" };
+  const facs = d.facilities.map(f => ({ ...f, kind: kind(f) }))
+    .sort((a, b) => (a.county !== "Wake") - (b.county !== "Wake") || (a.kind !== "trauma") - (b.kind !== "trauma") || a.name.localeCompare(b.name));
+
+  let map = null;
+  const markers = new Map();
   if (window.L) {
-    const map = L.map("map").setView([35.78, -78.64], 9);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap contributors · Facilities: Wake County GIS" }).addTo(map);
-    const pts = d.facilities.map(f => {
-      const trauma = (f.services || "").toLowerCase().includes("trauma");
-      return L.circleMarker([f.lat, f.lon], { radius: trauma ? 9 : 6, color: trauma ? "#ff8080" : "#8ab4ff", weight: 2, fillOpacity: .6 })
-        .bindPopup(`<b>${esc(f.name)}</b><br>${esc(f.services)} · ${esc(f.facility_type)}<br>${esc(f.address)}, ${esc(f.city)} (${esc(f.county)})<br><i>Real public data; no capacity information.</i>`)
+    map = L.map("map").setView([35.78, -78.64], 9);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, attribution: "© OpenStreetMap contributors · Wake County GIS" }).addTo(map);
+    facs.forEach(f => {
+      const m = L.circleMarker([f.lat, f.lon], { radius: f.kind === "trauma" ? 9 : 6, color: COLORS[f.kind], weight: 2, fillOpacity: .6 })
+        .bindPopup(`<b>${esc(f.name)}</b><br>${LABELS[f.kind]}<br>${esc(f.address)}, ${esc(f.city)} · ${esc(f.county)} County`)
         .addTo(map);
+      markers.set(f.name, m);
     });
-    map.fitBounds(L.featureGroup(pts).getBounds().pad(0.1));
+    map.invalidateSize();
+    map.fitBounds(L.featureGroup(facs.filter(f => f.county === "Wake").map(f => markers.get(f.name))).getBounds().pad(0.35));
   } else {
-    document.getElementById("map").innerHTML = '<p class="muted" style="padding:12px">Map library could not load (offline?). Facility table below is unaffected.</p>';
+    document.getElementById("map").innerHTML = '<p class="muted" style="padding:12px">Map could not load. The list of emergency departments is still available.</p>';
   }
+
+  const FILTERS = [["all", "All"], ["wake", "Wake County"], ["trauma", "Trauma"], ["freestanding", "Freestanding"]];
+  let filter = "all";
+  const renderList = () => {
+    const shown = facs.filter(f => filter === "all" || (filter === "wake" ? f.county === "Wake" : f.kind === filter));
+    document.getElementById("facFilters").innerHTML = FILTERS.map(([k, l]) =>
+      `<button class="chip${k === filter ? " on" : ""}" data-f="${k}">${l}</button>`).join("");
+    document.getElementById("raleighBody").innerHTML = shown.map(f =>
+      `<div class="fac" data-name="${esc(f.name)}"><i class="dot" style="background:${COLORS[f.kind]}"></i>` +
+      `<div><b>${esc(f.name)}</b><span class="muted small">${LABELS[f.kind]} · ${esc(f.city)}, ${esc(f.county)} County</span></div></div>`).join("");
+    markers.forEach((m, name) => {
+      const f = facs.find(x => x.name === name);
+      const on = shown.includes(f);
+      m.setStyle({ opacity: on ? 1 : .15, fillOpacity: on ? .6 : .05 });
+    });
+  };
+  document.getElementById("facFilters").onclick = e => { const k = e.target.dataset.f; if (k) { filter = k; renderList(); } };
+  document.getElementById("raleighBody").onclick = e => {
+    const row = e.target.closest(".fac"); const m = row && markers.get(row.dataset.name);
+    if (m) { map.flyTo(m.getLatLng(), 12, { duration: .6 }); m.openPopup(); }
+  };
+  renderList();
 }
 
 loadQueue();
