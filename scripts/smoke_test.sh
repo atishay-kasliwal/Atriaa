@@ -2,7 +2,7 @@
 # Smoke-test a running Atria backend: ./scripts/smoke_test.sh [base_url]
 # Default base URL is the local dev server; for DigitalOcean pass https://<app>.ondigitalocean.app
 set -eu
-BASE="${1:-http://localhost:8000}"
+BASE="${1:-http://localhost:3000/api}"
 fail=0
 
 check() {
@@ -12,6 +12,8 @@ check() {
 
 check /health
 check /queue
+check /live/queue
+check /live/sample
 
 echo "health: $(curl -s "$BASE/health")"
 exit $fail

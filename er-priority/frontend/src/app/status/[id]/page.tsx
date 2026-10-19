@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { api, clock, since } from "../../../lib/api";
 import type { CheckInStatus } from "../../../types";
+import Link from "next/link";
 
 type Feeling = "better" | "same" | "worse";
 
@@ -38,10 +39,17 @@ export default function CheckInStatusPage() {
     const [pain, setPain] = useState("");
     const [sending, setSending] = useState(false);
     const [sent, setSent] = useState("");
+    const [movedUp, setMovedUp] = useState<{ from: number; to: number } | null>(null);
+    const lastPosition = useRef<number | null>(null);
 
     const load = useCallback(async () => {
         try {
-            setStatus(await api.status(id));
+            const next = await api.status(id);
+            const prev = lastPosition.current;
+            const pos = next.line_position ?? null;
+            if (prev != null && pos != null && pos < prev) setMovedUp({ from: prev, to: pos });
+            lastPosition.current = pos;
+            setStatus(next);
             setError("");
         } catch (e) {
             setError((e as Error).message);
@@ -100,13 +108,13 @@ export default function CheckInStatusPage() {
 
     return (
         <main className="patient-shell">
-            <div className="patient-brand">
+            <Link href="/" className="patient-brand brand-link">
                 <div className="brand-mark">+</div>
                 <div>
                     <div className="patient-brand-name">ER Priority</div>
                     <div className="dashboard-patient">Waiting room check-in</div>
                 </div>
-            </div>
+            </Link>
 
             <section className="patient-card">
                 <p className="eyebrow">YOUR TICKET</p>
@@ -125,7 +133,14 @@ export default function CheckInStatusPage() {
                     <p>{copy.body}</p>
                 </div>
 
-                {status.stage === "waiting" && status.line_position != null && (
+                {movedUp && waiting && (
+                    <div className="stage-banner stage-called" role="status">
+                        <strong>You&apos;ve been moved up to #{movedUp.to}</strong>
+                        <p>A nurse reviewed your updates and changed your place in line (was #{movedUp.from}).</p>
+                    </div>
+                )}
+
+                {status.stage !== "awaiting_triage" && status.line_position != null && (
                     <div className="line-summary">
                         <div>
                             <span>Your place</span>

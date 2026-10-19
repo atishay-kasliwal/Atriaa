@@ -45,6 +45,10 @@ export type LivePatient = {
     current: Readings;
     deltas: { hr: number | null; spo2: number | null; pain: number | null };
     readings: number;
+    alert_active: boolean;
+    acknowledged_at: string | null;
+    acknowledged_by: string | null;
+    acknowledgement: string | null;
 };
 
 export type LiveQueue = {
@@ -54,6 +58,7 @@ export type LiveQueue = {
     waiting: number;
     awaiting_triage: number;
     flagged: number;
+    alerts: number;
 };
 
 // What a patient sees after checking in (GET /checkin/{id}).
@@ -81,4 +86,11 @@ export type AskAnswer = {
     queue_version: string;
     as_of: string;
     notice?: string;
+};
+
+export type SampleState = {
+    loaded: boolean;
+    cursor: number;
+    total: number;
+    done?: boolean;
 };

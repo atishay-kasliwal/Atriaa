@@ -1,138 +1,63 @@
-"use client";
+import Link from "next/link";
 
-import { useCallback, useEffect, useState } from "react";
-import PatientIntake from "../components/PatientIntake";
-import ERAdminDashboard from "../components/ERAdminDashboard";
-import AskAtria from "../components/AskAtria";
-import { api } from "../lib/api";
-import type { LivePatient, LiveQueue } from "../types";
-
-type Tab = "intake" | "queue" | "ask";
-
-const CRUMBS: Record<Tab, string> = {
-    intake: "Patient intake",
-    queue: "ER dashboard",
-    ask: "Ask Atria",
-};
-
-// The scripted Bay 4 replay board served by the backend.
-const REPLAY_URL = process.env.NEXT_PUBLIC_ATRIA_REPLAY_URL ?? "http://127.0.0.1:8001/";
+const STEPS = [
+    { n: "1", title: "Patient checks in", body: "On their phone or at the front desk: symptoms and a pain score." },
+    { n: "2", title: "Nurse sets priority", body: "Priority 1–3 is always a human decision. The patient sees their place in line." },
+    { n: "3", title: "Atria watches the wait", body: "Re-checks and the patient's own updates. Atria flags anyone who worsens on every reading." },
+    { n: "4", title: "Nurse acts", body: "Request a re-check, acknowledge the alert, raise priority. The patient's phone updates." },
+];
 
 export default function Home() {
-    const [activeTab, setActiveTab] = useState<Tab>("queue");
-    const [queue, setQueue] = useState<LiveQueue | null>(null);
-    const [error, setError] = useState("");
-    const [askPatient, setAskPatient] = useState("");
-
-    const refresh = useCallback(async () => {
-        try {
-            setQueue(await api.queue());
-            setError("");
-        } catch (e) {
-            setError((e as Error).message);
-        }
-    }, []);
-
-    useEffect(() => {
-        const first = setTimeout(refresh, 0);
-        const timer = setInterval(refresh, 3000);
-        return () => {
-            clearTimeout(first);
-            clearInterval(timer);
-        };
-    }, [refresh]);
-
-    function askAbout(patient: LivePatient) {
-        setAskPatient(patient.id);
-        setActiveTab("ask");
-    }
-
-    const nav = (tab: Tab, icon: string, label: string, count?: number) => (
-        <button
-            type="button"
-            className={`nav-item ${activeTab === tab ? "active" : ""}`}
-            onClick={() => setActiveTab(tab)}
-        >
-            <span className="nav-icon">{icon}</span>
-            {label}
-            {count !== undefined && <span className="nav-count">{count}</span>}
-        </button>
-    );
-
     return (
-        <main className="app-shell">
-            <aside className="sidebar">
-                <div className="brand">
+        <main className="home">
+            <header className="home-top">
+                <div className="patient-brand">
                     <div className="brand-mark">+</div>
                     <div>
-                        <div className="brand-name">ER Priority</div>
-                        <div className="brand-subtitle">with Atria reassessment</div>
+                        <div className="patient-brand-name">ER Priority</div>
+                        <div className="dashboard-patient">with Atria reassessment</div>
                     </div>
                 </div>
+                <span className="home-demo-tag">Hackathon demo · made-up patients</span>
+            </header>
 
-                <div className="nav-label">WORKSPACE</div>
-                {nav("intake", "＋", "Patient intake")}
-                {nav("queue", "▤", "ER dashboard", queue?.waiting ?? 0)}
-                {nav("ask", "✦", "Ask Atria", queue?.flagged || undefined)}
-
-                <div className="nav-label nav-label-spaced">DEMO</div>
-                <a className="nav-item" href={REPLAY_URL} target="_blank" rel="noreferrer">
-                    <span className="nav-icon">▶</span>
-                    Scripted replay ↗
-                </a>
-
-                <div className="sidebar-bottom">
-                    <div className={`sidebar-indicator ${error ? "offline" : ""}`} />
-                    <div>
-                        <strong>{error ? "Backend offline" : "Connected to Atria"}</strong>
-                        <span>Made-up demo patients only</span>
-                    </div>
-                </div>
-            </aside>
-
-            <section className="main-panel">
-                <header className="topbar">
-                    <div className="breadcrumb">
-                        Workspace <span>/</span> {CRUMBS[activeTab]}
-                    </div>
-                    <div className="top-status">
-                        <span className={`status-dot ${error ? "offline" : ""}`} />
-                        {error ? "Reconnecting…" : "Live"}
-                    </div>
-                </header>
-
-                <div className="content">
-                    <div className="safety-banner">
-                        <span className="safety-icon">ⓘ</span>
-                        <div>
-                            <strong>Human review required</strong>
-                            <p>
-                                This prototype does not diagnose patients or determine clinical priority. Staff assign
-                                priority; Atria only flags change since check-in for a nurse to review.
-                            </p>
-                        </div>
-                    </div>
-
-                    {activeTab === "intake" && <PatientIntake />}
-                    {activeTab === "queue" && (
-                        <ERAdminDashboard
-                            queue={queue}
-                            error={error}
-                            refresh={refresh}
-                            onGoToIntake={() => setActiveTab("intake")}
-                            onAsk={askAbout}
-                        />
-                    )}
-                    {activeTab === "ask" && (
-                        <AskAtria queue={queue} patientId={askPatient} onPatientChange={setAskPatient} />
-                    )}
-
-                    <footer>
-                        <span>ER Priority + Atria · Hackathon prototype</span>
-                        <span>Not for clinical use</span>
-                    </footer>
-                </div>
+            <section className="home-hero">
+                <p className="eyebrow">EMERGENCY WAITING ROOM</p>
+                <h1>See who&apos;s getting worse while they wait.</h1>
+                <p>
+                    Triage happens once, at the door. Atria keeps watching after that, so a patient whose readings
+                    slowly worsen doesn&apos;t get lost behind people who arrived sicker.
+                </p>
             </section>
+
+            <section className="home-roles">
+                <Link href="/checkin" className="role-card">
+                    <span className="role-icon">＋</span>
+                    <strong>I&apos;m a patient</strong>
+                    <span>Check in, see your place in line, and tell staff if you feel worse.</span>
+                    <em>Check in →</em>
+                </Link>
+                <Link href="/nurse" className="role-card role-card-dark">
+                    <span className="role-icon">▤</span>
+                    <strong>Nurse station</strong>
+                    <span>Set priority, record re-checks, act on Atria alerts, and ask Atria why.</span>
+                    <em>Open the waiting room →</em>
+                </Link>
+            </section>
+
+            <section className="home-steps">
+                {STEPS.map((s) => (
+                    <div className="home-step" key={s.n}>
+                        <span>{s.n}</span>
+                        <strong>{s.title}</strong>
+                        <p>{s.body}</p>
+                    </div>
+                ))}
+            </section>
+
+            <p className="form-disclaimer home-foot">
+                Not a medical device. Atria never diagnoses, changes priority or decides treatment. A nurse does.
+            </p>
         </main>
     );
 }

@@ -11,16 +11,16 @@ from uuid import UUID
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 BACKEND_DIR = Path(__file__).resolve().parent
-FRONTEND = BACKEND_DIR.parent / "frontend" / "index.html"
 load_dotenv(BACKEND_DIR / ".env")
 load_dotenv(BACKEND_DIR.parent / ".env.local")
 
 import raleigh  # noqa: E402
 import scenario  # noqa: E402
+import tiger  # noqa: E402
 from assistant import Assistant  # noqa: E402
 from engine import SPEEDS, DemoEngine  # noqa: E402
 from live import LiveWaitingRoom  # noqa: E402
@@ -40,7 +40,11 @@ def make_store():
     return SupabaseStore(url, key)
 
 
+tiger_mirror, tiger_analytics = tiger.connect(os.environ.get("TIGER_DATABASE_URL"))
 store = make_store()
+if tiger_mirror:
+    # Supabase stays the system of record; vitals events are also copied to Tiger.
+    store = tiger_mirror(store)
 engine = DemoEngine(store)
 live = LiveWaitingRoom(store)
 assistant = Assistant(os.environ.get("GEMINI_API_KEY"))
@@ -93,6 +97,16 @@ except ImportError:
     init_observability = None
 if init_observability:
     init_observability(app)
+
+@app.exception_handler(Exception)
+async def missing_table(request, exc):
+    # Supabase without the check-ins migration: say what to run instead of a bare 500.
+    if "PGRST205" in str(exc) and "checkins" in str(exc):
+        return JSONResponse(status_code=503, content={
+            "detail": "Database not set up for check-ins: run supabase/migrations/202610190005_checkins.sql"})
+    log.exception("unhandled error", exc_info=exc)
+    return JSONResponse(status_code=500, content={"detail": f"server error: {type(exc).__name__}"})
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -338,6 +352,18 @@ def post_live_reassess(checkin_id: UUID, body: StaffActionRequest):
             "note": "Audit only. Human priority and treatment are unchanged."}
 
 
+class AcknowledgeRequest(BaseModel):
+    actor: str = Field(default="Charge nurse", min_length=1, max_length=80)
+    priority: Optional[Literal[1, 2, 3]] = None
+
+
+@app.post("/live/{checkin_id}/acknowledge")
+def post_live_acknowledge(checkin_id: UUID, body: AcknowledgeRequest):
+    live_waiting(checkin_id)
+    entry = live.acknowledge(str(checkin_id), body.actor, body.priority)
+    return {"confirmed": True, "audit_entry": entry}
+
+
 @app.post("/live/{checkin_id}/call")
 def post_live_call(checkin_id: UUID, body: StaffActionRequest):
     live_waiting(checkin_id)
@@ -353,6 +379,24 @@ def post_live_ask(body: LiveAskRequest):
     return assistant.ask(body.question, queue, detail)
 
 
+@app.get("/live/sample")
+def get_live_sample():
+    return live.sample_state()
+
+
+@app.post("/live/sample/load")
+def post_live_sample_load():
+    return live.load_sample()
+
+
+@app.post("/live/sample/next")
+def post_live_sample_next():
+    try:
+        return live.sample_next()
+    except LookupError as exc:
+        raise HTTPException(409, str(exc))
+
+
 @app.post("/live/reset")
 def post_live_reset():
     return {"removed": live.reset()}
@@ -365,13 +409,56 @@ def raleigh_overview(live: bool = False):
     return raleigh.overview(live=live)
 
 
+# ---------- Tiger Data time series ----------
+
+def require_tiger():
+    if not tiger_analytics:
+        raise HTTPException(503, "Tiger Data is not configured (set TIGER_DATABASE_URL)")
+    return tiger_analytics
+
+
+def tiger_call(fn, *args):
+    try:
+        return fn(*args)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        log.exception("tiger query failed")
+        raise HTTPException(502, f"Tiger Data query failed: {type(exc).__name__}")
+
+
+@app.get("/tiger/trends")
+def tiger_trends(hours: int = 24):
+    """Per-patient vitals change for the live waiting room and the current replay run."""
+    t = require_tiger()
+    run = engine.run()
+    out = tiger_call(t.trends, ["live"] + ([run["run_id"]] if run else []), max(1, min(hours, 24 * 30)))
+    labels = {p_id: bay for bay, p_id, *_ in scenario.PATIENTS}
+    labels.update({c["id"]: f"{c['ticket']} {c.get('display_name') or ''}".strip() for c in store.list_checkins()})
+    for p in out["patients"]:
+        p["label"] = labels.get(p["patient_id"], p["patient_id"][:8])
+        p["source"] = "live" if p["run_id"] == "live" else "replay"
+    out["patients"].sort(key=lambda p: -((p["hr_last"] or 0) - (p["hr_first"] or 0)))
+    return out
+
+
+@app.get("/tiger/load")
+def tiger_load(days: int = 7):
+    return tiger_call(require_tiger().load, max(1, min(days, 30)))
+
+
+@app.get("/tiger/stats")
+def tiger_stats():
+    return tiger_call(require_tiger().stats)
+
+
 @app.get("/health")
 def health():
-    return {"status": "ok", "service": "atria-backend", "store": store.name, "speeds": list(SPEEDS)}
+    return {"status": "ok", "service": "atria-backend", "store": store.name, "speeds": list(SPEEDS),
+            "tiger": bool(tiger_analytics)}
 
 
 @app.get("/")
 def root():
-    if FRONTEND.exists():
-        return FileResponse(FRONTEND)
-    return health()
+    # API only. The product UI is the Next.js app in er-priority/frontend.
+    return {**health(), "ui": os.environ.get("ATRIA_UI_URL", "http://localhost:3000")}

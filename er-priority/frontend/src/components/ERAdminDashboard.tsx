@@ -107,6 +107,8 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
     const patients = useMemo(() => queue?.queue ?? [], [queue]);
     const recheckRequested = patients.filter((p) => p.reassessment_requested_at).length;
     const flagged = patients.filter((p) => p.reassessment_signal);
+    const alerts = flagged.filter((p) => p.alert_active);
+    const acknowledged = flagged.filter((p) => !p.alert_active);
 
     const rows = useMemo(() => {
         const term = search.trim().toLowerCase();
@@ -141,7 +143,7 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
     }
 
     async function clearDemo() {
-        if (!window.confirm("Remove every demo check-in from the waiting room?")) return;
+        if (!window.confirm("Remove every patient from the waiting room?")) return;
         await act("reset", () => api.reset());
     }
 
@@ -158,7 +160,7 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
                 </div>
                 <div className="title-actions">
                     <button type="button" className="secondary-button" onClick={clearDemo} disabled={busy === "reset"}>
-                        Clear demo
+                        Clear waiting room
                     </button>
                     <button type="button" className="primary-button" onClick={onGoToIntake}>
                         + Check In Patient
@@ -178,9 +180,12 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
                     <small>Need a human priority</small>
                 </div>
                 <div className="dashboard-stat stat-flagged">
-                    <span>Flagged by Atria</span>
-                    <strong>{queue?.flagged ?? "–"}</strong>
-                    <small>Persistent change since check-in</small>
+                    <span>Atria alerts</span>
+                    <strong>{queue?.alerts ?? "–"}</strong>
+                    <small>
+                        Need a nurse
+                        {acknowledged.length ? ` · ${acknowledged.length} acknowledged` : ""}
+                    </small>
                 </div>
                 <div className="dashboard-stat stat-recheck">
                     <span>Re-check requested</span>
@@ -189,35 +194,72 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
                 </div>
             </div>
 
-            {flagged.length > 0 ? (
-                flagged.map((p) => (
-                    <section className="history-context atria-alert" key={p.id}>
-                        <div className="history-icon">▲</div>
-                        <div className="history-copy">
-                            <strong>
-                                Atria · {p.ticket} {p.name}: {p.reasons[0]}
-                            </strong>
-                            <p>
-                                <Vitals p={p} />
-                                {p.priority ? `${PRIORITY_LABELS[p.priority]} (unchanged)` : "No priority yet"}. A nurse
-                                decides what happens next.
-                            </p>
-                        </div>
-                        {p.reassessment_requested_at ? (
-                            <span className="history-connection">Re-check requested {clock(p.reassessment_requested_at)}</span>
-                        ) : (
+            {alerts.map((p) => (
+                <section className="history-context atria-alert" key={p.id}>
+                    <div className="history-icon">▲</div>
+                    <div className="history-copy">
+                        <strong>
+                            Atria · {p.ticket} {p.name}: {p.reasons[0]}
+                        </strong>
+                        <p>
+                            <Vitals p={p} />
+                            {p.priority ? `${PRIORITY_LABELS[p.priority]}` : "No priority yet"} · line{" "}
+                            {p.line_position ? `#${p.line_position}` : "pending triage"}. A nurse decides what happens
+                            next.
+                        </p>
+                        <div className="alert-actions">
+                            {p.reassessment_requested_at ? (
+                                <span className="recheck-pending">Re-check requested {clock(p.reassessment_requested_at)}</span>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="secondary-button"
+                                    disabled={busy === p.id}
+                                    onClick={() => act(p.id, () => api.requestReassessment(p.id))}
+                                >
+                                    Request re-check
+                                </button>
+                            )}
+                            {PRIORITIES.filter((level) => !p.priority || level < p.priority).map((level) => (
+                                <button
+                                    key={level}
+                                    type="button"
+                                    className="primary-button"
+                                    disabled={busy === p.id}
+                                    onClick={() => act(p.id, () => api.acknowledge(p.id, level))}
+                                >
+                                    Acknowledge + Priority {level}
+                                </button>
+                            ))}
                             <button
                                 type="button"
-                                className="primary-button"
+                                className="secondary-button"
                                 disabled={busy === p.id}
-                                onClick={() => act(p.id, () => api.requestReassessment(p.id))}
+                                onClick={() => act(p.id, () => api.acknowledge(p.id))}
                             >
-                                Request re-check
+                                Acknowledge, keep priority
                             </button>
-                        )}
-                    </section>
-                ))
-            ) : (
+                        </div>
+                    </div>
+                </section>
+            ))}
+            {acknowledged.map((p) => (
+                <section className="history-context atria-acknowledged" key={p.id}>
+                    <div className="history-icon">✓</div>
+                    <div className="history-copy">
+                        <strong>
+                            {p.ticket} {p.name}: acknowledged by {p.acknowledged_by} at {clock(p.acknowledged_at)}
+                        </strong>
+                        <p>
+                            {p.acknowledgement?.replace("->", "→")}. Now{" "}
+                            {p.priority ? PRIORITY_LABELS[p.priority] : "awaiting triage"}
+                            {p.line_position ? `, #${p.line_position} in line` : ""}. Atria will flag again if a newer
+                            reading keeps worsening.
+                        </p>
+                    </div>
+                </section>
+            ))}
+            {alerts.length === 0 && acknowledged.length === 0 && (
                 <section className="history-context">
                     <div className="history-icon">↻</div>
                     <div className="history-copy">
@@ -344,7 +386,7 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
                                     const traj = TRAJECTORY[p.trajectory];
                                     return (
                                         <Fragment key={p.id}>
-                                            <tr className={`${priorityClass(p.priority)} ${p.reassessment_signal ? "row-flagged" : ""}`}>
+                                            <tr className={`${priorityClass(p.priority)} ${p.alert_active ? "row-flagged" : ""}`}>
                                                 <td className="position-cell">
                                                     <strong>
                                                         {sort === "attention" ? p.attention_position : p.line_position ?? "–"}
@@ -373,6 +415,9 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
                                                         {p.reassessment_signal ? "▲ " : ""}
                                                         {traj.label}
                                                     </span>
+                                                    {p.reassessment_signal && !p.alert_active && (
+                                                        <span className="ack-tag">✓ Acknowledged {clock(p.acknowledged_at)}</span>
+                                                    )}
                                                     <Vitals p={p} />
                                                     <span className="dashboard-patient">
                                                         {p.readings} reading{p.readings === 1 ? "" : "s"} · last {since(p.current.observed_at)}

@@ -1,11 +1,31 @@
-# Atria - ER reassessment demo
+# ER Priority with Atria
 
-**See what changed while patients wait.** Two ways to show it:
+**See who's getting worse while they wait.** Triage happens once, at the door. Atria keeps watching after that: patients check in on their phone, nurses set priority and record re-checks, and Atria flags anyone whose readings worsen on every check, so a nurse can act. All patients are made up. Not a medical device.
 
-- **Live waiting room** (`er-priority/frontend`, Next.js): patients check in on their phone, see their place in line and send "I feel worse" / pain updates. Staff set priority, record re-checks, and Atria flags anyone whose readings worsen on every check. Staff can request a re-check, which shows up on the patient's phone.
-- **Scripted replay** (`frontend/index.html`, served by the backend): the fixed Bay 4 story below, for a predictable demo.
+One app, three views (`er-priority/frontend`, Next.js), backed by the Atria API (`backend`, FastAPI, not user-facing):
 
-Synthetic ER waiting room → timestamped events → deterministic agents → Attention Queue → nurse reviews evidence → Ask Atria explains → nurse action is audited. All patient data is synthetic. Not a medical device.
+| Page | Who | What |
+|---|---|---|
+| `/` | everyone | Home: choose patient or nurse station |
+| `/checkin` → `/status/<id>` | patient | Check in, see ticket and place in line, send "I feel worse" / pain updates |
+| `/nurse` | nurse | Waiting room: priority, re-checks, Atria alerts, acknowledge + raise priority, call in, sample-room demo controls |
+| `/nurse/ask` | nurse | Ask Atria about the waiting room (Gemini, or a labeled sourced fallback) |
+| `/nurse/intake` | front desk | Check in a walk-in on their behalf |
+
+## Quick start
+```
+uv pip install --python .venv/bin/python -r backend/requirements-dev.txt
+./scripts/dev.sh          # API on :8001 + app on :3000
+```
+Open http://localhost:3000. Use `localhost`, not `127.0.0.1`: Next's dev server blocks its scripts on other hosts. For judges on other devices: `cloudflared tunnel --url http://localhost:3000` (the app proxies `/api` to the backend, so one tunnel is enough).
+
+## Demo (3 minutes)
+1. **Nurse station → Load sample**: 8 fictional patients, already triaged (Maya Patel is Priority 3, #6 in line). **Play** feeds in their scripted re-checks.
+2. Maya's HR, SpO2 and pain worsen on every reading. Atria raises a red alert and puts her first on its attention list. Her priority and place in line don't change: Atria never changes priority.
+3. **Request re-check**: her phone (`/status/<id>`) shows "A nurse wants to re-check you".
+4. **Acknowledge + Priority 1**: she moves to #1 in the official line. The alert turns green and comes back if a newer reading keeps worsening.
+5. **Ask Atria**: "Who should be re-checked next?" The answer cites tickets, readings and times.
+6. Live: a judge checks in at `/checkin` on their phone, the nurse sets priority, and their ticket shows their place in line.
 
 ## 1. Supabase
 In the SQL Editor (or `psql "$ATRIA_DATABASE_URL" -f ...`), run in order:
@@ -21,37 +41,17 @@ All are additive and safe to repeat; existing `er_*` tables are untouched. Put t
 ## 2. Gemini
 Key from aistudio.google.com/apikey in `GEMINI_API_KEY`. Default model `gemini-3.5-flash`, then `gemini-flash-latest` (override with `GEMINI_MODEL`). Calls time out after 12s with no SDK retries; on failure, or if the answer cites a number not in the evidence, Ask Atria returns a labeled deterministic fallback built from the same evidence.
 
-## 3. Run
+## 3. Run the API alone
 ```
-uv pip install --python .venv/bin/python -r backend/requirements-dev.txt
-cd backend
-uvicorn main:app --reload --port 8000
+.venv/bin/python -m uvicorn --app-dir backend main:app --port 8001
 ```
-Open http://localhost:8000 - the backend serves the frontend. (`frontend/index.html` also works from a static server; add `?api=http://host:port` to point it elsewhere.)
+Env is read from process env, then `backend/.env`, then the repo `.env.local`. Without Supabase credentials (or with `ATRIA_STORE=memory`) the API runs fully in memory, which is useful offline or as a demo fallback.
 
-Env is read from process env, then `backend/.env`, then the repo `.env.local`. Without Supabase credentials (or with `ATRIA_STORE=memory`) the backend runs fully in memory, which is useful offline or as a demo fallback.
-
-## 4. Live waiting room (ER Priority frontend)
+## 4. Frontend
 ```
-cd er-priority/frontend
-npm ci
-npm run dev            # http://localhost:3000, proxies /api/* to ATRIA_API_URL (default http://127.0.0.1:8001)
+cd er-priority/frontend && npm ci && npm run dev
 ```
-- `/` - staff workspace: **ER dashboard** (default), **Patient intake**, **Ask Atria**, plus a link to the scripted replay.
-- `/checkin` - patient-facing check-in for a phone or QR code. Submitting opens `/status/<id>`.
-- `/status/<id>` - the patient's ticket: stage (awaiting triage / in line / re-check requested / called), place in line, tickets ahead (no other names), and a "how are you feeling" + pain update.
-
-Where readings come from: the pain score at check-in, the patient's own updates, and staff re-checks (HR, SpO2, pain) entered on the dashboard. Priority 1-3 is always set by staff. Atria orders a separate attention list and never changes priority. **Clear demo** removes all live check-ins.
-
-Live demo script: open `/checkin` on a phone and check in → on the dashboard, set Priority 3 → record three re-checks with rising HR and falling SpO2 (e.g. 92/98, 101/96, 110/94) → the patient tops the Atria list with a **Persistent change** flag but stays #2 in the official line → **Request re-check** → the phone shows "A nurse wants to re-check you" → Ask Atria "Who should be re-checked next?".
-
-## 5. Scripted replay demo
-1. **Reset** - fresh synthetic run: 8 patients with intake readings only.
-2. **Start** (1x/2x/5x) or **Next Event** - the backend replays 25 fixed events; the board polls the backend.
-3. Bay 4 (ESI 3) rises to #1 on persistent change (HR 92→121, SpO2 98→91%, pain 4→7) while Bay 7 (ESI 2) stays visible and stable. Bay 9's single spike shows as *transient*, then resolves. Bay 2's long wait doesn't push it up. Bay 6's pain-only change shows **LOW CONSENSUS**.
-4. Click Bay 4: intake/current/delta, sparklines, agent findings, timeline. **Request Nurse Reassessment** writes a confirmed, idempotent audit event.
-5. Ask Atria: "Why did Bay 4 move above Bay 7?" - answer cites values, times and the queue version, labeled Gemini or fallback.
-6. **Raleigh Overview** tab: real Wake County GIS facility data (22 emergency facilities, 10 in Wake County) on a map, with source, dates and limitations. Live query with a bundled snapshot fallback.
+`/api/*` is proxied to `ATRIA_API_URL` (default `http://127.0.0.1:8001`). Readings come from the pain score at check-in, the patient's own updates, and nurse re-checks (HR, SpO2, pain). The sample waiting room replays the fixed 8-patient scenario in `backend/scenario.py` through the same live pages. The original scripted endpoints (`/demo/*`, `/queue`, `/patient/*`) remain in the API and are covered by tests, but no UI uses them.
 
 ## Tests
 ```
@@ -66,10 +66,11 @@ Covers trajectory rules, the Bay 4/7/9/2 acceptance scenario, the live check-in 
 | `backend/scenario.py` | Fixed 8-patient synthetic scenario |
 | `backend/engine.py` | Backend-owned replay (reset/step/status), queue and evidence projections |
 | `backend/live.py` | Live waiting room: check-ins, patient updates, staff re-checks, live queue and patient status |
-| `er-priority/frontend` | Next.js staff workspace and patient pages (check-in, status) |
+| `er-priority/frontend` | The product UI: home, patient check-in/status, nurse station, Ask Atria |
+| `scripts/dev.sh` | Starts API + app together |
 | `backend/store.py` | Supabase store and in-memory store |
 | `backend/assistant.py` | Gemini prompt, grounding check, deterministic fallback |
-| `backend/raleigh.py` | Wake County GIS hospitals (live + snapshot in `backend/data/`) |
+| `backend/raleigh.py` | Wake County GIS hospitals (API only; no longer shown in the UI) |
 | `backend/observability.py` | Sentry (no-op without `SENTRY_DSN`) |
 
 ## Rules

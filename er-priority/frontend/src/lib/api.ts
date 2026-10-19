@@ -1,4 +1,4 @@
-import type { AskAnswer, CheckInStatus, LiveQueue, PriorityLevel } from "../types";
+import type { AskAnswer, CheckInStatus, LiveQueue, PriorityLevel, SampleState } from "../types";
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
     const res = await fetch(`/api${path}`, {
@@ -43,10 +43,16 @@ export const api = {
         post(`/live/${id}/vitals`, body),
     requestReassessment: (id: string) =>
         post(`/live/${id}/reassess`, { ...STAFF, reason: "Atria flagged change since check-in" }),
+    acknowledge: (id: string, priority?: PriorityLevel) =>
+        post(`/live/${id}/acknowledge`, { ...STAFF, priority: priority ?? null }),
     callIn: (id: string) => post(`/live/${id}/call`, STAFF),
     ask: (question: string, checkinId?: string) =>
         post<AskAnswer>("/live/ask", { question, checkin_id: checkinId || null }),
     reset: () => post<{ removed: number }>("/live/reset", {}),
+
+    sampleState: () => call<SampleState>("/live/sample"),
+    loadSample: () => post<SampleState>("/live/sample/load", {}),
+    sampleNext: () => post<SampleState>("/live/sample/next", {}),
 };
 
 export function since(iso: string | null | undefined): string {

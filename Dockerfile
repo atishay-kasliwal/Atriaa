@@ -10,7 +10,6 @@ COPY backend/requirements.txt backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
 COPY backend backend
-COPY frontend frontend
 
 # Backend modules import each other by plain name, so run from backend/.
 WORKDIR /app/backend

@@ -101,3 +101,45 @@ def test_validation(live):
     a = check_in(live, "Ana Demo", ["Cough"])
     assert live.post(f"/live/{a['id']}/vitals", json={"spo2": 120}).status_code == 422
     assert live.post(f"/live/{a['id']}/priority", json={"priority": 5}).status_code == 422
+
+
+def test_acknowledge_and_raise_priority_moves_patient_up(live):
+    a = check_in(live, "Ana Demo", ["Shortness of breath"], pain=4)
+    b = check_in(live, "Ben Demo", ["Chest pain"], pain=5)
+    live.post(f"/live/{a['id']}/priority", json={"priority": 3})
+    live.post(f"/live/{b['id']}/priority", json={"priority": 2})
+    for hr, spo2 in [(92, 98), (101, 96), (110, 94)]:
+        live.post(f"/live/{a['id']}/vitals", json={"hr": hr, "spo2": spo2})
+    q = live.get("/live/queue").json()
+    assert by_ticket(q)["W-01"]["alert_active"] and q["alerts"] == 1
+
+    r = live.post(f"/live/{a['id']}/acknowledge", json={"actor": "Charge nurse", "priority": 1})
+    assert r.json()["audit_entry"]["reason"] == "Acknowledged Atria flag; priority 3 -> 1"
+    t = by_ticket(live.get("/live/queue").json())
+    assert t["W-01"]["priority"] == 1 and t["W-01"]["line_position"] == 1
+    assert t["W-02"]["line_position"] == 2
+    assert not t["W-01"]["alert_active"] and t["W-01"]["acknowledged_by"] == "Charge nurse"
+    assert live.get(f"/checkin/{a['id']}").json()["line_position"] == 1
+
+    # A newer worsening reading re-opens the alert.
+    live.post(f"/live/{a['id']}/vitals", json={"hr": 121, "spo2": 91})
+    assert by_ticket(live.get("/live/queue").json())["W-01"]["alert_active"]
+
+
+def test_sample_waiting_room_tells_the_bay_4_story(live):
+    state = live.post("/live/sample/load").json()
+    assert state["loaded"] and state["cursor"] == 0
+    q = live.get("/live/queue").json()
+    assert q["waiting"] == 8 and q["awaiting_triage"] == 0
+    names = {v["name"]: v for v in q["queue"]}
+    assert names["Maya Patel"]["priority"] == 3 and names["Daniel Reyes"]["priority"] == 2
+    assert names["Grace Kim"]["waiting_minutes"] >= 29  # backdated arrival
+
+    while not live.post("/live/sample/next").json()["done"]:
+        pass
+    q = live.get("/live/queue").json()
+    top = q["queue"][0]
+    assert top["name"] == "Maya Patel" and top["alert_active"]
+    assert top["priority"] == 3  # Atria never changes priority
+    assert live.post("/live/reset").json()["removed"] == 8
+    assert live.post("/live/sample/next").status_code == 409
