@@ -2,5 +2,7 @@ fastapi
 uvicorn[standard]
 supabase
 python-dotenv
-google-generativeai
+google-genai
 python-dateutil
+httpx
+sentry-sdk[fastapi]

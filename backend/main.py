@@ -1,28 +1,94 @@
+import asyncio
+import logging
 import os
-from datetime import datetime, timezone
+import uuid
+from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Literal, Optional
 
-from dateutil import parser as dateparser
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from supabase import Client, create_client
+from fastapi.responses import FileResponse
+from pydantic import BaseModel, Field
 
-load_dotenv()
+BACKEND_DIR = Path(__file__).resolve().parent
+FRONTEND = BACKEND_DIR.parent / "frontend" / "index.html"
+load_dotenv(BACKEND_DIR / ".env")
+load_dotenv(BACKEND_DIR.parent / ".env.local")
 
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_SERVICE_ROLE_KEY = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
-GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+import raleigh  # noqa: E402
+import scenario  # noqa: E402
+from assistant import Assistant  # noqa: E402
+from engine import SPEEDS, DemoEngine  # noqa: E402
+from store import MemoryStore, StoreError, SupabaseStore  # noqa: E402
+from tracing import span  # noqa: E402
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+log = logging.getLogger("atria")
 
-import google.generativeai as genai
 
-genai.configure(api_key=GEMINI_API_KEY)
-gemini_model = genai.GenerativeModel("gemini-2.0-flash")
+def make_store():
+    mode = os.environ.get("ATRIA_STORE", "").lower()
+    url, key = os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    if mode == "memory" or (mode != "supabase" and not (url and key)):
+        return MemoryStore()
+    if not (url and key):
+        raise RuntimeError("ATRIA_STORE=supabase needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
+    return SupabaseStore(url, key)
 
-app = FastAPI(title="Atria - ER reassessment demo")
+
+store = make_store()
+engine = DemoEngine(store)
+assistant = Assistant(os.environ.get("GEMINI_API_KEY"))
+_ticker: Optional[asyncio.Task] = None
+
+
+async def tick(run_id: str):
+    """Advance the replay on the backend clock; stops on pause, reset or completion."""
+    while True:
+        run = await asyncio.to_thread(engine.run)
+        if not run or run["run_id"] != run_id or run["status"] != "running":
+            return
+        await asyncio.sleep(engine.interval(run))
+        run = await asyncio.to_thread(engine.run)
+        if not run or run["run_id"] != run_id or run["status"] != "running":
+            return
+        try:
+            await asyncio.to_thread(engine.step, run_id)
+        except Exception:
+            log.exception("replay step failed; pausing")
+            await asyncio.to_thread(engine.set_status, "paused")
+            return
+
+
+def ensure_ticker():
+    global _ticker
+    run = engine.run()
+    if run and run["status"] == "running" and (_ticker is None or _ticker.done()):
+        _ticker = asyncio.get_running_loop().create_task(tick(run["run_id"]))
+
+
+@asynccontextmanager
+async def lifespan(_app):
+    run = await asyncio.to_thread(engine.run)
+    if run is None and store.name == "memory":
+        await asyncio.to_thread(engine.reset)
+    elif run and run["status"] == "running":
+        # A restarted process never resumes silently; the presenter presses Start.
+        await asyncio.to_thread(engine.set_status, "paused")
+    yield
+    if _ticker:
+        _ticker.cancel()
+
+
+app = FastAPI(title="Atria - ER reassessment demo", lifespan=lifespan)
+
+try:
+    from observability import init_observability
+except ImportError:
+    init_observability = None
+if init_observability:
+    init_observability(app)
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,215 +98,153 @@ app.add_middleware(
 )
 
 
-# ---------- helpers ----------
-
-def parse_dt(value: str) -> datetime:
-    dt = dateparser.isoparse(value)
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt
+def demo_patient(patient_id: str):
+    if patient_id not in scenario.PATIENT_IDS:
+        raise HTTPException(404, "patient not found")
 
 
-def classify_trajectory(events: list[dict]) -> dict:
-    """Pure, deterministic trend classification. No model involved.
-
-    persistent_change requires at least 2 of 3 signals (HR up, SpO2 down,
-    pain up) to move in the worsening direction on every consecutive step.
-    A single spike that reverses does NOT count as persistent.
-    """
-    if len(events) < 2:
-        return {
-            "trajectory": "insufficient_data",
-            "reassessment_signal": False,
-            "deltas": {},
-        }
-
-    events = sorted(events, key=lambda e: parse_dt(e["observed_at"]))
-    first, last = events[0], events[-1]
-
-    def series(key):
-        return [e[key] for e in events if e.get(key) is not None]
-
-    def monotonic_worsening(vals, increasing: bool) -> bool:
-        if len(vals) < 3:
-            return False
-        diffs = [b - a for a, b in zip(vals, vals[1:])]
-        return all(d > 0 for d in diffs) if increasing else all(d < 0 for d in diffs)
-
-    hr_vals, spo2_vals, pain_vals = series("hr"), series("spo2"), series("pain")
-
-    hr_worsening = monotonic_worsening(hr_vals, increasing=True)
-    spo2_worsening = monotonic_worsening(spo2_vals, increasing=False)
-    pain_worsening = monotonic_worsening(pain_vals, increasing=True)
-    worsening_count = sum([hr_worsening, spo2_worsening, pain_worsening])
-
-    deltas = {
-        "hr": (last.get("hr") - first.get("hr")) if first.get("hr") is not None and last.get("hr") is not None else None,
-        "spo2": (last.get("spo2") - first.get("spo2")) if first.get("spo2") is not None and last.get("spo2") is not None else None,
-        "pain": (last.get("pain") - first.get("pain")) if first.get("pain") is not None and last.get("pain") is not None else None,
-    }
-
-    if worsening_count >= 2:
-        trajectory = "persistent_change"
-    elif worsening_count == 1:
-        trajectory = "transient_or_mixed"
-    else:
-        trajectory = "stable"
-
-    return {
-        "trajectory": trajectory,
-        "reassessment_signal": worsening_count >= 2,
-        "deltas": deltas,
-        "signals_worsening": {"hr": hr_worsening, "spo2": spo2_worsening, "pain": pain_worsening},
-        "intake": {"hr": first.get("hr"), "spo2": first.get("spo2"), "pain": first.get("pain"), "observed_at": first["observed_at"]},
-        "current": {"hr": last.get("hr"), "spo2": last.get("spo2"), "pain": last.get("pain"), "observed_at": last["observed_at"]},
-    }
+def require_run():
+    run = engine.run()
+    if not run:
+        raise HTTPException(409, "no active demo run; POST /demo/reset first")
+    return run
 
 
-def build_patient_view(patient: dict, events: list[dict]) -> dict:
-    classification = classify_trajectory(events)
-    arrival = parse_dt(patient["arrival_time"])
-    waiting_minutes = int((datetime.now(timezone.utc) - arrival).total_seconds() // 60)
-    return {
-        "id": patient["id"],
-        "bay": patient["bay"],
-        "initial_triage": patient["initial_triage"],
-        "chief_complaint": patient["chief_complaint"],
-        "arrival_time": patient["arrival_time"],
-        "waiting_minutes": waiting_minutes,
-        "last_change": events[-1]["observed_at"] if events else None,
-        **classification,
-    }
-
-
-def rank_queue(views: list[dict]) -> list[dict]:
-    def sort_key(v):
-        worsening_total = sum(1 for ok in v.get("signals_worsening", {}).values() if ok)
-        return (
-            0 if v["trajectory"] == "persistent_change" else (1 if v["trajectory"] == "transient_or_mixed" else 2),
-            -worsening_total,
-            -(v.get("deltas", {}).get("hr") or 0),
-        )
-
-    ordered = sorted(views, key=sort_key)
-    for i, v in enumerate(ordered):
-        v["attention_position"] = i + 1
-    return ordered
-
-
-# ---------- routes ----------
+# ---------- queue and evidence ----------
 
 @app.get("/queue")
 def get_queue():
-    patients = supabase.table("patients").select("*").execute().data
-    views = []
-    for p in patients:
-        events = supabase.table("events").select("*").eq("patient_id", p["id"]).order("observed_at").execute().data
-        views.append(build_patient_view(p, events))
-    return {"queue": rank_queue(views)}
+    return engine.queue()
 
 
 @app.get("/patient/{patient_id}/evidence")
 def get_evidence(patient_id: str):
-    patient_res = supabase.table("patients").select("*").eq("id", patient_id).execute().data
-    if not patient_res:
-        raise HTTPException(404, "patient not found")
-    patient = patient_res[0]
-    events = supabase.table("events").select("*").eq("patient_id", patient_id).order("observed_at").execute().data
-    audit = supabase.table("audit_log").select("*").eq("patient_id", patient_id).order("created_at").execute().data
-    view = build_patient_view(patient, events)
-    view["timeline"] = events
-    view["audit_log"] = audit
+    demo_patient(patient_id)
+    view = engine.evidence(patient_id)
+    if view is None:
+        raise HTTPException(404, "patient not in current run")
     return view
 
 
 class ActionRequest(BaseModel):
-    actor: str
+    actor: str = Field(min_length=1, max_length=80)
     action: Literal["acknowledge", "request_reassessment", "resolve"]
-    reason: Optional[str] = None
+    reason: Optional[str] = Field(default=None, max_length=500)
+    idempotency_key: Optional[str] = Field(default=None, max_length=80)
+    queue_version: Optional[str] = None
 
 
 @app.post("/patient/{patient_id}/action")
 def post_action(patient_id: str, body: ActionRequest):
-    patient_res = supabase.table("patients").select("id").eq("id", patient_id).execute().data
-    if not patient_res:
-        raise HTTPException(404, "patient not found")
+    demo_patient(patient_id)
+    run = engine.run()
+    key = body.idempotency_key or str(uuid.uuid4())
+    existing = store.find_audit(key)
+    if existing:
+        return {"confirmed": True, "duplicate": True, "audit_entry": existing}
     row = {
         "patient_id": patient_id,
         "actor": body.actor,
         "action": body.action,
         "reason": body.reason,
+        "run_id": run["run_id"] if run else None,
+        "queue_version": body.queue_version,
+        "idempotency_key": key,
     }
-    result = supabase.table("audit_log").insert(row).execute()
-    return {"confirmed": True, "audit_entry": result.data[0] if result.data else row}
+    try:
+        with span("atria.audit", "insert_audit", action=body.action, patient_id=patient_id):
+            entry = store.insert_audit(row)
+    except StoreError as exc:
+        raise HTTPException(502, f"audit write not confirmed: {exc}")
+    except Exception as exc:
+        existing = store.find_audit(key)
+        if existing:
+            return {"confirmed": True, "duplicate": True, "audit_entry": existing}
+        raise HTTPException(502, f"audit write failed: {type(exc).__name__}")
+    return {
+        "confirmed": True,
+        "duplicate": False,
+        "audit_entry": entry,
+        "note": "Audit only. Official triage, treatment and bed assignment are unchanged.",
+    }
 
 
 class AskRequest(BaseModel):
-    question: str
+    question: str = Field(min_length=1, max_length=500)
     patient_id: Optional[str] = None
 
 
 @app.post("/ask")
 def post_ask(body: AskRequest):
-    patients = supabase.table("patients").select("*").execute().data
-    queue_summary = []
-    for p in patients:
-        events = supabase.table("events").select("*").eq("patient_id", p["id"]).order("observed_at").execute().data
-        view = build_patient_view(p, events)
-        queue_summary.append({
-            "bay": view["bay"],
-            "initial_triage": view["initial_triage"],
-            "trajectory": view["trajectory"],
-            "reassessment_signal": view["reassessment_signal"],
-            "waiting_minutes": view["waiting_minutes"],
-            "deltas": view.get("deltas"),
-            "attention_position": None,
-        })
-    queue_summary = rank_queue_summary_positions(queue_summary)
-
-    detail_text = ""
-    if body.patient_id:
-        detail = get_evidence(body.patient_id)
-        detail_text = (
-            f"\nFull timeline for {detail['bay']}: "
-            + "; ".join(
-                f"{e['observed_at']} HR={e.get('hr')} SpO2={e.get('spo2')} pain={e.get('pain')} note={e.get('note')}"
-                for e in detail["timeline"]
-            )
-        )
-
-    prompt = f"""You are Atria's explanation assistant for a synthetic ER reassessment demo.
-Rules you must follow strictly:
-- Only use the evidence provided below. Never invent patient facts, numbers, or timestamps.
-- Never diagnose, prescribe treatment, or recommend a specific clinical action.
-- Clearly distinguish a patient's initial intake severity from their current trajectory; do not imply one overrides the other.
-- If the evidence is mixed or insufficient, say "evidence is mixed or limited; human review recommended" instead of guessing.
-- Cite specific bay names, values, and timestamps from the evidence when relevant.
-
-Current Attention Queue evidence (ranked by trajectory, not intake severity):
-{queue_summary}
-{detail_text}
-
-Question: {body.question}
-
-Answer concisely, grounded only in the evidence above.
-"""
-
-    response = gemini_model.generate_content(prompt)
-    return {"answer": response.text}
+    queue = engine.queue()
+    detail = engine.evidence(body.patient_id) if body.patient_id in scenario.PATIENT_IDS else None
+    return assistant.ask(body.question, queue, detail)
 
 
-def rank_queue_summary_positions(summary: list[dict]) -> list[dict]:
-    def sort_key(v):
-        order = {"persistent_change": 0, "transient_or_mixed": 1, "stable": 2, "insufficient_data": 3}
-        return order.get(v["trajectory"], 3)
+# ---------- demo replay (backend-owned) ----------
 
-    ordered = sorted(summary, key=sort_key)
-    for i, v in enumerate(ordered):
-        v["attention_position"] = i + 1
-    return ordered
+@app.get("/demo/state")
+def demo_state():
+    return engine.queue()["run"]
+
+
+@app.post("/demo/reset")
+async def demo_reset():
+    global _ticker
+    if _ticker:
+        _ticker.cancel()
+        _ticker = None
+    await asyncio.to_thread(engine.reset)
+    return await asyncio.to_thread(demo_state)
+
+
+@app.post("/demo/start")
+async def demo_start():
+    await asyncio.to_thread(require_run)
+    await asyncio.to_thread(engine.set_status, "running")
+    ensure_ticker()
+    return await asyncio.to_thread(demo_state)
+
+
+@app.post("/demo/pause")
+async def demo_pause():
+    await asyncio.to_thread(require_run)
+    await asyncio.to_thread(engine.set_status, "paused")
+    return await asyncio.to_thread(demo_state)
+
+
+@app.post("/demo/next")
+async def demo_next():
+    run = await asyncio.to_thread(require_run)
+    await asyncio.to_thread(engine.step, run["run_id"])
+    return await asyncio.to_thread(demo_state)
+
+
+class SpeedRequest(BaseModel):
+    speed: Literal[1, 2, 5]
+
+
+@app.post("/demo/speed")
+async def demo_speed(body: SpeedRequest):
+    run = await asyncio.to_thread(require_run)
+    await asyncio.to_thread(engine.set_status, run["status"], body.speed)
+    return await asyncio.to_thread(demo_state)
+
+
+# ---------- public context ----------
+
+@app.get("/raleigh/overview")
+def raleigh_overview(live: bool = False):
+    return raleigh.overview(live=live)
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok", "service": "atria-backend", "store": store.name, "speeds": list(SPEEDS)}
 
 
 @app.get("/")
 def root():
-    return {"status": "ok", "service": "atria-backend"}
+    if FRONTEND.exists():
+        return FileResponse(FRONTEND)
+    return health()
