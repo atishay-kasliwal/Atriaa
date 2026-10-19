@@ -57,7 +57,6 @@ function Shell({ children }: { children: React.ReactNode }) {
                     <div className={`sidebar-indicator ${error ? "offline" : ""}`} />
                     <div>
                         <strong>{error ? "Connection lost" : "Live"}</strong>
-                        <span>Made-up demo patients only</span>
                     </div>
                 </div>
             </aside>
@@ -69,26 +68,15 @@ function Shell({ children }: { children: React.ReactNode }) {
                     </div>
                     <div className="top-status">
                         <span className={`status-dot ${error ? "offline" : ""}`} />
-                        {error ? "Reconnecting…" : "Updating every 3 s"}
+                        {error ? "Reconnecting…" : "Live"}
                     </div>
                 </header>
 
                 <div className="content">
-                    <div className="safety-banner">
-                        <span className="safety-icon">ⓘ</span>
-                        <div>
-                            <strong>Human review required</strong>
-                            <p>
-                                This prototype does not diagnose patients or determine clinical priority. Nurses assign
-                                priority; Atria only flags change since check-in for a nurse to review.
-                            </p>
-                        </div>
-                    </div>
-
                     {children}
 
                     <footer>
-                        <span>ER Priority with Atria · Hackathon prototype</span>
+                        <span>ER Priority with Atria</span>
                         <span>Not for clinical use</span>
                     </footer>
                 </div>

@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { api } from "./api";
+import { warmAskCache } from "./askCache";
 import type { LiveQueue } from "../types";
 
 type NurseState = {
@@ -27,6 +28,7 @@ export function NurseProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     useEffect(() => {
+        warmAskCache();
         const first = setTimeout(refresh, 0);
         const timer = setInterval(refresh, 3000);
         return () => {

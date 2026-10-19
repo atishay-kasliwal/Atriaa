@@ -19,8 +19,20 @@ const SYMPTOMS = [
     "Other",
 ];
 
-export default function PatientIntake() {
+const PAIN_WORDS = ["No pain", "Mild", "Mild", "Mild", "Moderate", "Moderate", "Moderate", "Severe", "Severe", "Severe", "Worst possible"];
+
+function painTier(n: number) {
+    return n <= 3 ? "pain-low" : n <= 6 ? "pain-mid" : "pain-high";
+}
+
+type PatientIntakeProps = {
+    // "staff": front desk checking someone in; "patient": the patient on their own phone.
+    variant?: "staff" | "patient";
+};
+
+export default function PatientIntake({variant = "patient"}: PatientIntakeProps) {
     const router = useRouter();
+    const staff = variant === "staff";
     const [name, setName] = useState("");
     const [dateOfBirth, setDateOfBirth] = useState("");
     const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
@@ -41,7 +53,7 @@ export default function PatientIntake() {
         event.preventDefault();
 
         if (selectedSymptoms.length === 0) {
-            setMessage("Please select at least one symptom.");
+            setMessage("Select at least one symptom.");
             return;
         }
 
@@ -63,21 +75,26 @@ export default function PatientIntake() {
         }
     }
 
+    const painValue = pain === "" ? null : Number(pain);
+
     return (
         <div className="intake-layout">
             <section className="intake-main">
                 <div className="page-heading">
                     <div>
-                        <p className="eyebrow">PATIENT REGISTRATION</p>
-                        <h1>Patient Intake</h1>
-                        <p>Enter patient details and symptoms for human review.</p>
+                        <p className="eyebrow">{staff ? "FRONT DESK" : "EMERGENCY CHECK-IN"}</p>
+                        <h1>{staff ? "Check in a patient" : "Check in"}</h1>
+                        <p>
+                            {staff
+                                ? "Takes under a minute. The patient joins the waiting room and gets a ticket to follow their place in line."
+                                : "Tell us how you're feeling. You'll get a ticket and can follow your place in line from your phone."}
+                        </p>
                     </div>
                 </div>
 
                 <form className="intake-form" onSubmit={handleSubmit}>
                     <div className="form-section">
-                        <h2>Patient Information</h2>
-
+                        <h2><span className="step-num">1</span>{staff ? "Patient" : "About you"}</h2>
                         <div className="form-grid">
                             <label className="form-field">
                                 <span>Full name</span>
@@ -85,7 +102,8 @@ export default function PatientIntake() {
                                     type="text"
                                     value={name}
                                     onChange={(event) => setName(event.target.value)}
-                                    placeholder="Enter patient's full name"
+                                    placeholder="First and last name"
+                                    autoComplete="name"
                                     required
                                 />
                             </label>
@@ -104,11 +122,12 @@ export default function PatientIntake() {
                     </div>
 
                     <div className="form-section">
-                        <h2>Symptoms</h2>
-                        <p className="section-description">
-                            Select all symptoms reported by the patient.
-                        </p>
-
+                        <div className="section-row">
+                            <h2><span className="step-num">2</span>Symptoms</h2>
+                            <span className="section-count">
+                                {selectedSymptoms.length ? `${selectedSymptoms.length} selected` : "Select all that apply"}
+                            </span>
+                        </div>
                         <div className="symptom-grid">
                             {SYMPTOMS.map((symptom) => (
                                 <label className="symptom-option" key={symptom}>
@@ -124,13 +143,15 @@ export default function PatientIntake() {
                     </div>
 
                     <div className="form-section">
-                        <h2>Pain right now</h2>
-                        <p className="section-description">
-                            0 means no pain, 10 means the worst pain you can imagine.
-                        </p>
+                        <div className="section-row">
+                            <h2><span className="step-num">3</span>Pain right now</h2>
+                            <span className={`section-count ${painValue !== null ? painTier(painValue) : ""}`}>
+                                {painValue !== null ? `${painValue}/10 · ${PAIN_WORDS[painValue]}` : "0 to 10"}
+                            </span>
+                        </div>
                         <div className="pain-scale" role="radiogroup" aria-label="Pain score">
                             {Array.from({length: 11}, (_, n) => (
-                                <label key={n} className={`pain-option ${pain === String(n) ? "selected" : ""}`}>
+                                <label key={n} className={`pain-option ${pain === String(n) ? `selected ${painTier(n)}` : ""}`}>
                                     <input
                                         type="radio"
                                         name="pain"
@@ -142,16 +163,22 @@ export default function PatientIntake() {
                                 </label>
                             ))}
                         </div>
+                        <div className="pain-ends">
+                            <span>No pain</span>
+                            <span>Moderate</span>
+                            <span>Worst possible</span>
+                        </div>
                     </div>
 
                     <div className="form-section">
+                        <h2><span className="step-num">4</span>Anything else?</h2>
                         <label className="form-field">
-                            <span>Additional notes</span>
+                            <span className="sr-only">Notes</span>
                             <textarea
                                 value={notes}
                                 onChange={(event) => setNotes(event.target.value)}
-                                placeholder="Optional: relevant details reported by the patient"
-                                rows={4}
+                                placeholder={staff ? "When it started, medications, allergies…" : "When it started, medications, allergies… (optional)"}
+                                rows={3}
                             />
                         </label>
                     </div>
@@ -162,15 +189,14 @@ export default function PatientIntake() {
                         </p>
                     )}
 
-                    <button type="submit" className="primary-button" disabled={submitting}>
-                        {submitting ? "Checking in..." : "Check In Patient"}
-                    </button>
-
-                    <p className="form-disclaimer">
-                        This demo records reported information only. A qualified human
-                        reviewer must assess the patient and assign priority. After check-in
-                        you&apos;ll see your place in line and can tell staff if you feel worse.
-                    </p>
+                    <div className="submit-row">
+                        <p className="form-disclaimer">
+                            A nurse reviews every check-in and sets priority. Nothing here is a diagnosis.
+                        </p>
+                        <button type="submit" className="primary-button" disabled={submitting}>
+                            {submitting ? "Checking in…" : staff ? "Check in patient" : "Check in"}
+                        </button>
+                    </div>
                 </form>
             </section>
         </div>

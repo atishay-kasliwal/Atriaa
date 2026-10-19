@@ -18,7 +18,6 @@ export default function Home() {
                         <div className="dashboard-patient">with Atria reassessment</div>
                     </div>
                 </div>
-                <span className="home-demo-tag">Hackathon demo · made-up patients</span>
             </header>
 
             <section className="home-hero">

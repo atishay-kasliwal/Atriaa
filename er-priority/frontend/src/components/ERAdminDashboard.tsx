@@ -530,7 +530,7 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
             </section>
 
             <p className="form-disclaimer">
-                Hackathon demo with made-up check-ins. Colors show human-assigned priority. Atria flags change since
+                Colors show human-assigned priority. Atria flags change since
                 check-in for a nurse to review; it never diagnoses, changes priority or decides treatment.
             </p>
         </section>

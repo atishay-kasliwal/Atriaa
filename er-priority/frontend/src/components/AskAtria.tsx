@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { api, clock } from "../lib/api";
+import { clock } from "../lib/api";
+import { SUGGESTED, askCached } from "../lib/askCache";
 import type { AskAnswer, LiveQueue } from "../types";
 
 type AskAtriaProps = {
@@ -12,12 +13,6 @@ type AskAtriaProps = {
 
 type Turn = { id: number; question: string; ticket?: string; answer?: AskAnswer; error?: string };
 
-const SUGGESTED = [
-    "Who should be re-checked next?",
-    "What changed since check-in for this patient?",
-    "Has anyone with a lower priority started changing?",
-    "Who changed most since check-in?",
-];
 
 export default function AskAtria({ queue, patientId, onPatientChange }: AskAtriaProps) {
     const [question, setQuestion] = useState("");
@@ -47,7 +42,7 @@ export default function AskAtria({ queue, patientId, onPatientChange }: AskAtria
             setTurns((all) => all.map((t) => (t.id === id ? { ...t, ...patch } : t)));
         setTurns((all) => [{ id, question: q, ticket: selected?.ticket }, ...all]);
         try {
-            update({ answer: await api.ask(q, selected?.id) });
+            update({ answer: await askCached(q, selected?.id) });
         } catch (e) {
             update({ error: (e as Error).message });
         }
