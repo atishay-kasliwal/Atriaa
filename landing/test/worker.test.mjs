@@ -8,6 +8,38 @@ const request = (data = signup, headers = {}) => new Request(`${origin}/api/wait
   method: 'POST', headers: { Origin: origin, 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(data),
 });
 
+test('preview redirects preserve paths and queries within the canonical origin', async () => {
+  const env = { CANONICAL_ORIGIN: 'https://atria.atriveo.com' };
+  for (const path of ['/', '/privacy?from=preview', '//other.invalid/path?from=preview']) {
+    const response = await worker.fetch(new Request(`https://atria-landing.example.workers.dev${path}`), env);
+    assert.equal(response.status, 308);
+    const target = new URL(response.headers.get('Location'));
+    assert.equal(target.origin, env.CANONICAL_ORIGIN);
+    assert.equal(target.pathname + target.search, path);
+  }
+});
+
+test('stale preview form submissions request a refresh without writing', async () => {
+  const response = await worker.fetch(new Request('https://atria-landing.example.workers.dev/api/waitlist', {
+    method: 'POST', body: JSON.stringify(signup),
+  }), { CANONICAL_ORIGIN: 'https://atria.atriveo.com' });
+  assert.equal(response.status, 409);
+  assert.match((await response.json()).error, /Refresh/);
+});
+
+test('HTML preserves its status and cache policy while excluding edge script injection', async () => {
+  const env = { ASSETS: { fetch: async () => new Response('<h1>Missing</h1>', {
+    status: 404, headers: { 'Content-Type': 'text/html', 'Cache-Control': 'public, max-age=300', 'X-Content-Type-Options': 'nosniff' },
+  }) } };
+  const response = await worker.fetch(new Request(`${origin}/missing`), env);
+  assert.equal(response.status, 404);
+  assert.equal(await response.text(), '<h1>Missing</h1>');
+  assert.equal(response.headers.get('Cache-Control'), 'public, max-age=300, no-transform');
+  assert.equal(response.headers.get('X-Content-Type-Options'), 'nosniff');
+  env.ASSETS.fetch = async () => new Response('script', { headers: { 'Content-Type': 'application/javascript', 'Cache-Control': 'public, max-age=300' } });
+  assert.equal((await worker.fetch(new Request(`${origin}/app.js`), env)).headers.get('Cache-Control'), 'public, max-age=300');
+});
+
 test('normalizes emails and rejects invalid data and missing consent', () => {
   assert.equal(validateSignup({ ...signup, email: ' Person@Example.com ' }).value.email, 'person@example.com');
   for (const input of [null, [], {}, { ...signup, email: 'invalid' }, { ...signup, email: 'x\ny@example.com' }, { ...signup, consent: false }, { ...signup, role: 'admin' }, { ...signup, name: 'x'.repeat(101) }]) {

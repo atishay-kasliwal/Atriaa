@@ -20,8 +20,9 @@ CI. The clinical slate/blue direction and Switzer typeface are preserved.
 
 ## Verification
 
-- Eight unit tests cover validation, persistence confirmation, storage failure,
-  origin/method/content-type controls, body-size bounds, rate limiting, and routing.
+- Eleven unit tests cover validation, persistence confirmation, storage failure,
+  origin/method/content-type controls, body-size bounds, rate limiting, routing,
+  canonical redirects, stale forms, and HTML response headers.
 - Seven browser tests cover responsive signup, mobile keyboard menu, failed writes,
   privacy/404 navigation, reduced motion, readable content without JavaScript, and
   text contrast under light and dark system preferences on desktop and phone.
@@ -63,7 +64,7 @@ secondary text exceeds 6:1 on the used light surfaces, and button labels exceed 
 Two new browser regressions run axe color-contrast checks on home, privacy, and
 404 at 1440px and 390px, each under light and dark system preferences. All twelve
 page/viewport/preference combinations pass with zero contrast violations. The
-seven browser tests and eight unit tests pass. Before/after form screenshots
+seven browser tests and eleven unit tests pass. Before/after form screenshots
 were also inspected; evidence is under ignored `.wrangler/contrast-before/` and
 `.wrangler/contrast-after/`. The earlier visual scores apply to the light setting
 reviewed at launch, not the broken automatic dark theme.
@@ -86,7 +87,7 @@ does not establish indexing, rankings, traffic, or clinical effectiveness.
 | `crawl:twitter_card_missing` — twitter_card_missing: No Twitter card declared (2 URLs) | changed | The launch page is intended to be shared; matching large-image card added. Absent from follow-up. |
 | `crawl:canonical_missing` — canonical_missing: No canonical declared (2 URLs) | changed | Each page identifies its currently deployed Cloudflare URL. Follow-up observes those intended canonicals. |
 | `crawl:structured_data_missing` — structured_data_missing: No structured data detected (2 URLs) | no-change | No specific rich-result type was established for this waitlist or privacy notice. No generic organization markup was added solely to clear a heuristic. |
-| `crawl:canonicalized_page` — canonicalized_page: Canonicalized page (2 URLs; follow-up) | no-change | Localhost intentionally references the published preview. Update canonical, OG, robots, and sitemap URLs together when the custom domain is live. |
+| `crawl:canonicalized_page` — canonicalized_page: Canonicalized page (2 URLs; follow-up) | no-change | Localhost intentionally references the public custom domain. Canonical, OG, robots, and sitemap URLs now identify atria.atriveo.com. |
 
 | Affected URL/page | Disposition | Evidence |
 |---|---|---|
@@ -96,14 +97,15 @@ does not establish indexing, rankings, traffic, or clinical effectiveness.
 
 ## Deployment and source boundaries
 
-The landing is deployed as Worker `atria-landing` with its existing D1 database,
-so existing signup rows are preserved. Deployment uses the connected account;
-`atria.atriveo.com` remains pending migration of Atria’s Worker and D1 to the
-account that owns that zone. The owner has now authorized that account and the
-main Atriveo hub is updated; the original Atria preview/database are in a
-different account, so their records must be preserved during a future move.
-GitHub automatic deployment remains
-gated on its documented dedicated Cloudflare token and account variables.
+The landing is live at **https://atria.atriveo.com**, served by Worker
+`atria-landing` in the account that owns `atriveo.com`. The owner chose a fresh
+waitlist database in that account; no records were imported from the old preview.
+The old Worker and database remain untouched. The main Atriveo catalog points
+to the public custom domain. See `MIGRATION.md` for the launch record.
+
+GitHub automatic deployment remains gated on its documented dedicated Cloudflare
+token and account variables. The production configuration, DNS attachment, and
+manual deployment are complete.
 
 The separate uncommitted Next.js application-engine changes remain local. They
 currently fail a production build due to missing font files, incorrect CSS paths,

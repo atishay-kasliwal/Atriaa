@@ -1,14 +1,15 @@
 # Atria by Atriveo — landing and early access
 
-Cloudflare preview: **https://atria-landing.s6-backend-spike.workers.dev**.
+Live site: **https://atria.atriveo.com**.
 
-Public destination: **https://atria.atriveo.com**. The custom domain must be attached
-from the Cloudflare account that owns the `atriveo.com` zone; it is not activated
-just by checking in a configuration file. The preview is deployed in the original Cloudflare account. The `atriveo.com`
-zone is now accessible in its owning account, which serves the updated Atriveo
-hub. Atria’s Worker and D1 database are still in a different account; activating
-the custom domain requires moving them while preserving the existing signups.
-GitHub automatic deployment is also pending the dedicated token described below.
+The Worker and waitlist database run in the Cloudflare account that owns
+`atriveo.com`. The owner requested a fresh waitlist here. No legacy records were
+imported, and the old account's resources were left untouched. See
+[the launch record](MIGRATION.md) for resource identifiers and verification.
+
+The new preview, `https://atria-landing.katishay.workers.dev`, redirects visitors
+to the public domain. GitHub automatic deployment remains gated on the dedicated
+token described below.
 
 This directory contains a standalone landing page, a durable email waitlist, and
 the Cloudflare Worker that serves them. It links to the existing product demo at
@@ -69,25 +70,24 @@ For a different Cloudflare account, update `account_id`, create a database with
 Apply migrations before deploying. Do not delete a database containing signups
 when moving accounts; export and transfer the records first.
 
-### Attach atria.atriveo.com
+### Custom domain
 
-1. Confirm the deploying account has access to the existing `atriveo.com` zone.
-2. Check whether `atria.atriveo.com` already has DNS records before replacing any.
-3. Add this top-level configuration, then run `npm run deploy`:
-
-```json
-"routes": [
-  { "pattern": "atria.atriveo.com", "custom_domain": true }
-]
-```
-
-Cloudflare manages the DNS record and certificate for a
+`wrangler.jsonc` already attaches `atria.atriveo.com` as a
 [Worker Custom Domain](https://developers.cloudflare.com/workers/configuration/routing/custom-domains/).
-Confirm both `https://atria.atriveo.com/` and `/api/health` respond successfully.
-The root Atriveo site and other product subdomains should continue serving their
-existing Workers. After the domain responds, update the canonical and Open Graph
-URLs in both HTML pages, `robots.txt`, and `sitemap.xml` to the new public domain.
-Until then they intentionally identify the working Cloudflare preview.
+Cloudflare manages its DNS and certificate. Deploy with the account that owns
+`atriveo.com`, then verify `https://atria.atriveo.com/` and `/api/health`.
+
+Canonical, Open Graph, robots, and sitemap URLs identify this public domain.
+GET/HEAD requests on the new Workers preview redirect with HTTP 308 and retain
+their path and query. Stale preview form submissions request a refresh instead
+of writing from the old page. Local Wrangler development remains on localhost.
+HTML responses use `no-transform` to keep automatic edge script injection from
+conflicting with the site's Content Security Policy; other assets keep their
+normal compression and cache settings.
+
+The original `atria-landing.s6-backend-spike.workers.dev` deployment belongs to a
+separate account and was not modified or redirected. Its records are not part
+of the fresh database used by the custom domain.
 
 ## GitHub and continuous deployment
 

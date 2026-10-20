@@ -44,12 +44,30 @@ async function readBody(request) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    // Move preview visitors to the public domain without forwarding stale forms.
+    // Local Wrangler requests continue to work with the production configuration.
+    if (env.CANONICAL_ORIGIN && url.hostname.endsWith('.workers.dev') && url.origin !== env.CANONICAL_ORIGIN) {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return json({ error: 'Atria has moved to atria.atriveo.com. Refresh this page before joining.' }, 409);
+      }
+      const target = new URL(env.CANONICAL_ORIGIN);
+      target.pathname = url.pathname;
+      target.search = url.search;
+      target.hash = '';
+      return new Response(null, { status: 308, headers: { Location: target.href, 'Cache-Control': 'no-store' } });
+    }
     if (url.pathname === '/api/health' && request.method === 'GET') {
       return json({ status: 'ok', service: 'atria-landing' });
     }
     if (url.pathname !== '/api/waitlist') {
       if (url.pathname.startsWith('/api/')) return json({ error: 'Not found.' }, 404);
-      return env.ASSETS.fetch(request);
+      const response = await env.ASSETS.fetch(request);
+      if (!response.headers.get('Content-Type')?.includes('text/html')) return response;
+      // Keep zone-level script injection from changing HTML under the site's CSP.
+      // Other asset types retain their normal compression and cache behavior.
+      const headers = new Headers(response.headers);
+      headers.set('Cache-Control', `${headers.get('Cache-Control') || 'public, max-age=0, must-revalidate'}, no-transform`);
+      return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
     }
     if (request.method !== 'POST') return json({ error: 'Use the signup form to join.' }, 405, { Allow: 'POST' });
     const origin = request.headers.get('origin');
@@ -57,7 +75,6 @@ export default {
     if (!request.headers.get('content-type')?.toLowerCase().startsWith('application/json')) {
       return json({ error: 'Expected a JSON signup.' }, 415);
     }
-
     // Cloudflare supplies the connecting IP. It is used only as a transient
     // rate-limit key and is never stored in the waitlist database or logged.
     if (env.SIGNUP_LIMITER) {

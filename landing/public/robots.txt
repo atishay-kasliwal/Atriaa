@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 Disallow: /api/
-Sitemap: https://atria-landing.s6-backend-spike.workers.dev/sitemap.xml
+Sitemap: https://atria.atriveo.com/sitemap.xml

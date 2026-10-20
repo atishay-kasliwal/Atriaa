@@ -7,8 +7,8 @@ Atria is an Atriveo project that began at
 where it won **Best Use of Tiger Data**.
 
 The public landing page and early-access waitlist are in [`landing/`](landing/README.md),
-published at [the Cloudflare preview](https://atria-landing.s6-backend-spike.workers.dev)
-and prepared for **atria.atriveo.com** (custom domain pending Cloudflare account migration).
+published at **[atria.atriveo.com](https://atria.atriveo.com)**. The site runs in
+the Atriveo domain’s Cloudflare account with a fresh waitlist database.
 The landing page has its
 own D1 signup database and links to the existing working prototype. Signup does
 not create a clinical-product account.

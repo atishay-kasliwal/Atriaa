@@ -1,7 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "atria-landing",
-  "account_id": "5a4ff8745582949139ddfd36ee1ae3e9",
+  "account_id": "a4e4f5c1214af712b0f5f48ef7c722ec",
   "main": "src/worker.mjs",
   "compatibility_date": "2026-10-19",
   "workers_dev": true,
@@ -9,15 +9,13 @@
     "directory": "./dist",
     "binding": "ASSETS",
     "not_found_handling": "404-page",
-    "run_worker_first": [
-      "/api/*"
-    ]
+    "run_worker_first": true
   },
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "atria-waitlist",
-      "database_id": "08cb6135-41cd-490c-ab42-43446f4f1a52",
+      "database_id": "6e7c11bc-adbc-4cdf-a49f-43bbdddd1135",
       "migrations_dir": "migrations"
     }
   ],
@@ -39,5 +37,14 @@
       "src",
       "scripts"
     ]
-  }
+  },
+  "vars": {
+    "CANONICAL_ORIGIN": "https://atria.atriveo.com"
+  },
+  "routes": [
+    {
+      "pattern": "atria.atriveo.com",
+      "custom_domain": true
+    }
+  ]
 }
