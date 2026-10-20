@@ -1,26 +1,12 @@
 
-@import "tailwindcss";
+@import "../engine/tokens.css";
+@import "../engine/engine.css";
 
 /* =====================================================
    1. Theme and reset
    ===================================================== */
 
-:root {
-  --background: #f4f7fb;
-  --surface: #ffffff;
-  --foreground: #1e293b;
-  --muted: #64748b;
-  --border: #e2e8f0;
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --sidebar: #111827;
-  --sidebar-hover: #1f2937;
-  --sidebar-active: #25334a;
-  --red: #dc2626;
-  --amber: #d97706;
-  --green: #16a34a;
-  --gray: #94a3b8;
-}
+
 
 * {
   box-sizing: border-box;
@@ -35,7 +21,7 @@ body {
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--f-text);
   font-size: 14px;
   line-height: 1.55;
 }
@@ -1329,8 +1315,8 @@ h3 {
 /* =====================================================
    Product polish: calmer type, tighter radii, quieter color
    ===================================================== */
-:root { --background: #f6f7f9; --border: #e4e7ec; --muted: #667085; --foreground: #101828; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif; font-size: 13.5px; -webkit-font-smoothing: antialiased; }
+
+body { font-family: var(--f-text); font-size: 13.5px; -webkit-font-smoothing: antialiased; }
 h1, .page-heading h1, .dashboard-title-row h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.02em; }
 h2, .section-heading h2 { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
 .eyebrow { font-size: 10.5px; letter-spacing: 0.08em; font-weight: 600; color: var(--muted); }
@@ -1423,3 +1409,94 @@ h2, .section-heading h2 { font-size: 16px; font-weight: 600; letter-spacing: -0.
 .bed-next strong { font-size: 14px; }
 .bed-next .primary-button { white-space: nowrap; }
 .bed-next-empty { border-color: var(--border); background: #f9fafb; color: var(--muted); font-size: 12.5px; }
+
+/* Atria application finish: readable surfaces and compact, calm controls. */
+body { font-size: 15px; line-height: 1.55; }
+.noscript-notice { margin: 0; padding: 12px 20px; background: #fef3c7; color: #78350f; }
+button, input, select, textarea { font: inherit; }
+a { text-underline-offset: 3px; }
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+.home-hero h1 { font-size: clamp(32px, 4.7vw, 54px); letter-spacing: -0.04em; }
+.home-hero > p:not(.eyebrow) { max-width: 60ch; color: var(--muted); }
+.brand-link .brand-mark { transition: background 160ms ease, box-shadow 160ms ease; }
+.brand-link:hover .brand-mark { background: var(--primary-hover); box-shadow: inset 0 -3px 0 rgb(15 23 42 / 25%); }
+.home-top > a:not(.brand-link) { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 12px; border-radius: var(--radius-interactive); color: var(--action); }
+.home-top > a:not(.brand-link):hover { background: #e0f2fe; box-shadow: inset 0 -2px var(--action); }
+.home-step p, .role-card > span:not(.role-icon), .dashboard-patient,
+.field-caption, .dashboard-subtitle, .form-disclaimer { color: var(--muted); }
+.role-card-dark > span:not(.role-icon) { color: #cbd5e1; }
+.role-card, .home-step, .dashboard-stat, .dashboard-section, .patient-card,
+.history-context, .content form, .sample-bar { border-radius: var(--radius-interactive); }
+.primary-button, .content form button[type="submit"] { background: var(--action); border-color: var(--action); color: #fff; }
+.primary-button:hover, .content form button[type="submit"]:hover { background: var(--primary-hover); }
+.primary-button, .secondary-button, .queue-filter, .sidebar .nav-item, .feeling-option {
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+.primary-button:hover:not(:disabled), .secondary-button:hover:not(:disabled) { box-shadow: inset 0 -3px 0 rgb(15 23 42 / 18%); }
+.primary-button:active:not(:disabled), .secondary-button:active:not(:disabled) { box-shadow: inset 0 2px 0 rgb(15 23 42 / 25%); }
+.sidebar .nav-item:hover { box-shadow: inset 3px 0 0 #7dd3fc; }
+.brand-subtitle, .nav-label, .sidebar-bottom span { color: #cbd5e1; }
+.sidebar-indicator.connecting, .status-dot.connecting { background: #b45309; }
+.top-status { white-space: nowrap; }
+.content input:not([type="checkbox"]):not([type="radio"]), .content select,
+.content textarea { font-size: 16px; }
+.patient-table th, .patient-table td { font-size: 13px; }
+.patient-table th { color: var(--muted); }
+.bed-board-loading { min-height: 246px; }
+.content footer { color: var(--muted); font-size: 12px; }
+.patient-table td button, .patient-table td select { min-height: 34px; }
+.sample-copy { min-width: 0; }
+.sample-copy > div, .history-copy { overflow-wrap: anywhere; }
+.pain-option { min-height: 44px; }
+.content .pain-scale .pain-option.selected.pain-low { background: #166534; border-color: #166534; }
+.content .pain-scale .pain-option.selected.pain-mid { background: #92400e; border-color: #92400e; }
+.content .pain-scale .pain-option.selected.pain-high { background: #b42318; border-color: #b42318; }
+.content .pain-scale label.pain-option { margin: 0; display: grid; }
+.content .pain-scale input[type="radio"] { width: 1px; min-height: 0; padding: 0; }
+.content input:focus-visible, .content select:focus-visible, .content textarea:focus-visible { outline: 3px solid var(--action); outline-offset: 2px; }
+.patient-card h2 { font-size: 20px; }
+.submit-row { flex-wrap: wrap; }
+.submit-row .form-disclaimer { flex: 1 1 220px; }
+.not-found { max-width: 680px; margin: 12vh auto; padding: 24px; }
+.not-found h1 { font-size: clamp(32px, 6vw, 54px); }
+.not-found .primary-button { display: inline-flex; text-decoration: none; margin-top: 12px; }
+
+@media (max-width: 760px) {
+  .app-shell { flex-direction: column; }
+  .sidebar { flex: none; min-height: auto; width: 100%; padding: 16px; }
+  .sidebar .brand { padding-bottom: 14px; }
+  .sidebar nav { display: flex; gap: 6px; overflow-x: auto; padding: 3px 3px 8px; }
+  .sidebar .nav-label, .sidebar-bottom { display: none; }
+  .sidebar .nav-item { flex: 0 0 auto; width: auto; min-height: 44px; margin: 0; padding: 8px 12px; white-space: nowrap; }
+  .sidebar .nav-icon { display: none; }
+  .sidebar .nav-count { min-width: 20px; height: 20px; margin-left: 4px; }
+  .content { padding: 22px 14px; }
+  .topbar { padding: 12px 16px; }
+  .sample-bar { align-items: flex-start; flex-direction: column; }
+  .sample-copy { flex: none; }
+  .sample-actions { width: 100%; }
+  .sample-actions button { min-height: 44px; }
+  .sample-progress { flex: none; width: 100%; }
+  .ask-input-row { flex-wrap: wrap; }
+  .ask-input-row input { min-width: 0; flex-basis: 100%; }
+  .ask-panel { padding: 16px; }
+  .nearby-origin { min-width: 0; width: 100%; }
+}
+@media (max-width: 480px) {
+  .home { padding: 22px 16px 36px; }
+  .home-hero { padding-top: 36px; }
+  .home-roles { gap: 12px; }
+  .role-card { padding: 22px; }
+  .home-steps { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .home-step { padding: 14px; }
+  .home-step strong { font-size: 14px; }
+  .pain-scale { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+  .pain-ends { justify-content: flex-start; gap: 6px 12px; flex-wrap: wrap; }
+  .submit-row .primary-button { width: 100%; }
+  .section-row { align-items: flex-start; flex-wrap: wrap; }
+  .feeling-row { flex-wrap: wrap; }
+  .feeling-option { min-height: 44px; }
+  .bed-next { align-items: flex-start; flex-direction: column; }
+  .dashboard-stats.stats-four { gap: 10px; }
+  .dashboard-stat { padding: 14px; }
+}

@@ -1,0 +1,234 @@
+/* switzer (fontshare) */
+@font-face {
+  font-family: "Switzer";
+  src: url("/fonts/switzer-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Switzer";
+  src: url("/fonts/switzer-500-normal.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Switzer";
+  src: url("/fonts/switzer-600-normal.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Switzer";
+  src: url("/fonts/switzer-700-normal.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Design Tokens - Atria Landing Page */
+/* Based on the art direction system from DESIGN.md */
+
+/* Color Palette */
+:root {
+  /* Keep text, native controls, and surfaces on one intentional light palette. */
+  color-scheme: only light;
+  /* Clinical slate palette with blue accent */
+  --color-ground: #f8fafc; /* Light slate - background */
+  --color-ink: #0f172a; /* Dark slate - primary text */
+  --color-muted: #475569; /* Readable secondary text, including small labels */
+  --color-line: #e2e8f0; /* Stroke color */
+  --color-accent: #0ea5e9; /* Blue accent - interactive elements */
+  --color-curtain: #0f172a; /* For transitions/overlays */
+  --color-surface: #ffffff;
+  --color-surface-soft: #edf3f8;
+  --color-action: #075985;
+  --color-action-hover: #0c4a6e;
+  --color-on-action: #ffffff;
+  --color-control-border: #738397;
+
+  /* Semantic color roles */
+  --color-background: var(--color-ground);
+  --color-foreground: var(--color-ink);
+  --color-primary: var(--color-accent);
+  --color-secondary: var(--color-muted);
+  --color-success: #10b981; /* Emerald - for positive states */
+  --color-warning: #f59e0b; /* Amber - for caution */
+  --color-error: #ef4444; /* Red - for error states */
+
+  /* Alpha variants for overlays and states */
+  --color-ground-10: rgba(248, 250, 252, 0.1);
+  --color-ground-20: rgba(248, 250, 252, 0.2);
+  --color-ground-30: rgba(248, 250, 252, 0.3);
+  --color-ink-10: rgba(15, 23, 42, 0.1);
+  --color-ink-20: rgba(15, 23, 42, 0.2);
+  --color-ink-30: rgba(15, 23, 42, 0.3);
+  --color-accent-10: rgba(14, 165, 233, 0.1);
+  --color-accent-20: rgba(14, 165, 233, 0.2);
+  --color-accent-30: rgba(14, 165, 233, 0.3);
+}
+
+/* Typography - Switzer neo-grotesk family */
+:root {
+  /* Font families */
+  --font-display: "Switzer", system-ui, sans-serif;
+  --font-text: "Switzer", system-ui, sans-serif;
+
+  /* Fluid type scale */
+  --type-scale-0: 0.75rem; /* 12px */
+  --type-scale-1: 0.875rem; /* 14px */
+  --type-scale-2: 1rem; /* 16px */
+  --type-scale-3: 1.125rem; /* 18px */
+  --type-scale-4: 1.25rem; /* 20px */
+  --type-scale-5: 1.5rem; /* 24px */
+  --type-scale-6: 1.875rem; /* 30px */
+  --type-scale-7: 2.25rem; /* 36px */
+  --type-scale-8: 3rem; /* 48px */
+  --type-scale-9: 3.75rem; /* 60px */
+  --type-scale-10: 4.5rem; /* 72px */
+
+  /* Font weights */
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+  --weight-black: 900;
+
+  /* Line heights */
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.75;
+
+  /* Letter tracking */
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+}
+
+/* Grid & Rhythm */
+:root {
+  /* Grid configuration */
+  --grid-columns: 12;
+  --grid-gutter: 1.5rem; /* 24px */
+  --grid-max-width: 80rem; /* 1280px */
+
+  /* Section rhythm */
+  --section-padding-block: 5rem; /* 80px */
+  --section-padding-inline: 1.5rem; /* 24px */
+
+  /* Responsive breakpoints */
+  --breakpoint-sm: 480px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+}
+
+/* Shape */
+:root {
+  /* Radius scale */
+  --radius-none: 0;
+  --radius-sm: 0.25rem; /* 4px */
+  --radius-md: 0.5rem; /* 8px */
+  --radius-lg: 1rem; /* 16px */
+  --radius-full: 9999px;
+
+  /* Interactive radius */
+  --radius-interactive: var(--radius-sm);
+
+  /* Layout radius */
+  --radius-layout: var(--radius-none);
+}
+
+/* Motion Language - Pulse and Flow */
+:root {
+  /* Easing functions */
+  --ease-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-power3: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-power4: cubic-bezier(0.04, 0.83, 0.22, 1);
+
+  /* Durations */
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --duration-slow: 500ms;
+  --duration-pulse: 2000ms; /* For continuous pulse */
+  --duration-flow: 3000ms; /* For continuous flow */
+
+  /* Motion verb: pulse and flow */
+  --motion-verb: pulse-and-flow;
+}
+
+/* Opacities */
+:root {
+  --opacity-0: 0;
+  --opacity-10: 0.1;
+  --opacity-20: 0.2;
+  --opacity-30: 0.3;
+  --opacity-40: 0.4;
+  --opacity-50: 0.5;
+  --opacity-60: 0.6;
+  --opacity-70: 0.7;
+  --opacity-80: 0.8;
+  --opacity-90: 0.9;
+  --opacity-100: 1;
+}
+
+/* Z-index scale */
+:root {
+  --z-index-base: 0;
+  --z-index-docked: 10;
+  --z-index-modal: 100;
+  --z-index-popover: 110;
+  --z-index-toast: 120;
+  --z-index-overlay: 130;
+  --z-index-tooltip: 140;
+  --z-index-cursor: 150;
+  --z-index-gl: 200;
+  --z-index-curtain: 250;
+  --z-index-loader: 300;
+}
+
+/* Utility classes */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--color-ink);
+  color: var(--color-ground);
+  padding: 8px 16px;
+  z-index: var(--z-index-toast);
+  transition: top var(--duration-normal) var(--ease-soft);
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+    --duration-slow: 0ms;
+    --duration-pulse: 0ms;
+    --duration-flow: 0ms;
+  }
+
+  * {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+}

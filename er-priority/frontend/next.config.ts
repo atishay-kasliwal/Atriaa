@@ -6,6 +6,7 @@ const ATRIA_API_URL = process.env.ATRIA_API_URL ?? "http://127.0.0.1:8001";
 
 const nextConfig: NextConfig = {
   agentRules: false,
+  turbopack: { root: import.meta.dirname },
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${ATRIA_API_URL}/:path*` }];
   },

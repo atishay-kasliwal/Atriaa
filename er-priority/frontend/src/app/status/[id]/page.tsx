@@ -87,18 +87,19 @@ export default function CheckInStatusPage() {
 
     if (error && !status) {
         return (
-            <main className="patient-shell">
+            <main id="main" tabIndex={-1} className="patient-shell">
                 <div className="patient-card">
-                    <h1>Check-in not found</h1>
+                    <h1>We couldn&apos;t load your check-in</h1>
                     <p className="dashboard-subtitle">Please ask the front desk for help.</p>
+                    <button type="button" className="primary-button" onClick={load}>Try again</button>
                 </div>
             </main>
         );
     }
     if (!status) {
         return (
-            <main className="patient-shell">
-                <div className="patient-card">Loading your check-in…</div>
+            <main id="main" tabIndex={-1} className="patient-shell">
+                <div className="patient-card" role="status"><h1>Your check-in</h1><p>Loading your ticket…</p></div>
             </main>
         );
     }
@@ -107,17 +108,19 @@ export default function CheckInStatusPage() {
     const waiting = status.status === "waiting";
 
     return (
-        <main className="patient-shell">
+        <main id="main" tabIndex={-1} className="patient-shell">
             <Link href="/" className="patient-brand brand-link">
                 <div className="brand-mark">+</div>
                 <div>
-                    <div className="patient-brand-name">ER Priority</div>
+                    <div className="patient-brand-name">Atria</div>
                     <div className="dashboard-patient">Waiting room check-in</div>
                 </div>
             </Link>
 
+            {error && <p className="form-error" role="alert">Your ticket could not refresh. Showing the last received update. Please ask the front desk for help.</p>}
+
             <section className="patient-card">
-                <p className="eyebrow">YOUR TICKET</p>
+                <h1 className="eyebrow">Your ticket</h1>
                 <div className="ticket-row">
                     <div className="ticket-code">{status.ticket}</div>
                     <div>
@@ -190,6 +193,7 @@ export default function CheckInStatusPage() {
                                 key={f}
                                 type="button"
                                 className={`feeling-option feeling-${f} ${feeling === f ? "selected" : ""}`}
+                                aria-pressed={feeling === f}
                                 onClick={() => setFeeling(feeling === f ? "" : f)}
                             >
                                 {f === "better" ? "Better" : f === "same" ? "About the same" : "Worse"}
@@ -204,6 +208,8 @@ export default function CheckInStatusPage() {
                                 key={n}
                                 type="button"
                                 className={`pain-option ${pain === String(n) ? "selected" : ""}`}
+                                aria-pressed={pain === String(n)}
+                                aria-label={`Pain ${n} of 10`}
                                 onClick={() => setPain(pain === String(n) ? "" : String(n))}
                             >
                                 <span>{n}</span>
@@ -219,7 +225,7 @@ export default function CheckInStatusPage() {
                     >
                         {sending ? "Sending…" : "Send update to staff"}
                     </button>
-                    {sent && <p className="intake-message">{sent}</p>}
+                    {sent && <p className="intake-message" role="status">{sent}</p>}
                     {status.last_update && (
                         <p className="form-disclaimer">Last update {since(status.last_update)}.</p>
                     )}

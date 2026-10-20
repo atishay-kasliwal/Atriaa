@@ -1,0 +1,24 @@
+:root {
+  color-scheme: only light;
+  --ground: #f8fafc;
+  --surface: #ffffff;
+  --ink: #0f172a;
+  --muted: #475569;
+  --line: #d5dde7;
+  --accent: #0ea5e9;
+  --action: #075985;
+  --background: var(--ground);
+  --foreground: var(--ink);
+  --border: var(--line);
+  --primary: var(--action);
+  --primary-hover: #0c4a6e;
+  --sidebar: #0f172a;
+  --sidebar-hover: #1e293b;
+  --sidebar-active: #27364d;
+  --red: #b42318;
+  --amber: #92400e;
+  --green: #166534;
+  --gray: #64748b;
+  --f-text: var(--font-switzer), Arial, Helvetica, sans-serif;
+  --radius-interactive: 4px;
+}

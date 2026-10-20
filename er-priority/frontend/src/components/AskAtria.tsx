@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { clock } from "../lib/api";
-import { SUGGESTED, askCached } from "../lib/askCache";
+import { useRef, useState } from "react";
+import { api, clock } from "../lib/api";
+import { SUGGESTED } from "../data/questions";
 import type { AskAnswer, LiveQueue } from "../types";
 
 type AskAtriaProps = {
@@ -19,22 +19,14 @@ export default function AskAtria({ queue, patientId, onPatientChange }: AskAtria
     const [turns, setTurns] = useState<Turn[]>([]);
     const [asking, setAsking] = useState(false);
     const nextId = useRef(0);
+    const busy = useRef(false);
     const patients = queue?.queue ?? [];
     const selected = patients.find((p) => p.id === patientId);
 
-    // Demo: answer the two key questions as soon as the waiting room has loaded.
-    const autoAsked = useRef(false);
-    useEffect(() => {
-        if (autoAsked.current || !queue || !queue.queue.length) return;
-        autoAsked.current = true;
-        // In parallel: each Gemini answer takes several seconds.
-        ["Who changed most since check-in?", "Who should be re-checked next?"].forEach((q) => ask(q));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [queue]);
-
     async function ask(text: string) {
         const q = text.trim();
-        if (!q || asking) return;
+        if (!q || busy.current) return;
+        busy.current = true;
         setAsking(true);
         setQuestion("");
         const id = ++nextId.current;
@@ -42,10 +34,11 @@ export default function AskAtria({ queue, patientId, onPatientChange }: AskAtria
             setTurns((all) => all.map((t) => (t.id === id ? { ...t, ...patch } : t)));
         setTurns((all) => [{ id, question: q, ticket: selected?.ticket }, ...all]);
         try {
-            update({ answer: await askCached(q, selected?.id) });
+            update({ answer: await api.ask(q, selected?.id) });
         } catch (e) {
             update({ error: (e as Error).message });
         }
+        busy.current = false;
         setAsking(false);
     }
 
@@ -101,7 +94,7 @@ export default function AskAtria({ queue, patientId, onPatientChange }: AskAtria
 
                 {turns.length === 0 ? (
                     <div className="empty-state">
-                        <h3>No questions yet</h3>
+                        <h2>No questions yet</h2>
                         <p>Pick a suggestion or type a question. Answers cite tickets, readings and times.</p>
                     </div>
                 ) : (
@@ -117,6 +110,8 @@ export default function AskAtria({ queue, patientId, onPatientChange }: AskAtria
                                 ) : t.answer ? (
                                     <>
                                         <div className="ask-answer">{t.answer.answer}</div>
+                                        <p className="provider-badge">{t.answer.provider === "fallback" ? "Recorded-data summary" : "Gemini explanation"}</p>
+                                        {t.answer.notice && <p className="field-caption">{t.answer.notice}</p>}
                                         <p className="dashboard-patient">Based on readings as of {clock(t.answer.as_of)}</p>
                                     </>
                                 ) : (

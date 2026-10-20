@@ -190,6 +190,8 @@ def _change(v: dict) -> str:
 def fallback_answer(question: str, queue: dict) -> str:
     q = queue["queue"]
     tail = f"(Queue {queue['queue_version']}, as of {core.hhmm(queue['as_of'])} UTC. A nurse decides; no diagnosis or treatment advice.)"
+    if not q:
+        return f"No patients in the current run. {tail}"
     bays = _bays_in(question, queue)
     if len(bays) >= 2:
         a, b = sorted(bays[:2], key=lambda v: v["attention_position"])

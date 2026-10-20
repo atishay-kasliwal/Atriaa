@@ -1,4 +1,31 @@
-# ER Priority with Atria
+# Atria by Atriveo
+
+**See what changes while patients wait.**
+
+Atria is an Atriveo project that began at
+[MLH's Hacktoberfest Hacks @ All Things Open](https://www.mlh.com/events/hacktoberfest-hacks-all-things-open),
+where it won **Best Use of Tiger Data**.
+
+The public landing page and early-access waitlist are in [`landing/`](landing/README.md),
+published at **[atria.atriveo.com](https://atria.atriveo.com)**. The site runs in
+the Atriveo domain’s Cloudflare account with a fresh waitlist database.
+The landing page has its
+own D1 signup database and links to the existing working prototype. Signup does
+not create a clinical-product account.
+
+| Component | Source | Hosting |
+|---|---|---|
+| Landing + early-access waitlist | `landing/` | Cloudflare Workers + D1 |
+| Interactive product prototype | `er-priority/frontend/` | Vercel |
+| Product API | `backend/` | Render |
+| Patient history and application data | `tiger/` | Tiger Data |
+
+For landing setup, custom-domain attachment, GitHub deployment, and managing
+signups, see the [landing deployment guide](landing/README.md). The checked-in
+[GitHub workflow](.github/workflows/landing.yml) runs landing checks; deployment
+is enabled only after adding the Cloudflare account configuration and scoped token.
+
+## ER Priority prototype
 
 **See who's getting worse while they wait.** Triage happens once, at the door. Atria keeps watching after that: patients check in on their phone, nurses set priority and record re-checks, and Atria flags anyone whose readings worsen on every check, so a nurse can act. All patients are made up. Not a medical device.
 
@@ -55,7 +82,7 @@ Live: app https://atria-er.vercel.app, API https://atria-api-lzin.onrender.com, 
 
 **API (Render).** `render.yaml` is a Render Blueprint: Docker build from `Dockerfile`, branch `main`, health check `/health`. Every push to `main` redeploys it. Secrets are set in the Render dashboard, never in git: `GEMINI_API_KEY`, `SENTRY_DSN`, `TIGER_DATABASE_URL`, `TIGER_PASSWORD`. The free plan sleeps after about 15 idle minutes, so open the site a couple of minutes before a demo.
 
-**App (Vercel).** No `vercel.json` is needed; Vercel detects Next.js. The only setting is `ATRIA_API_URL`, which `er-priority/frontend/next.config.ts` uses to forward `/api/*` to the API. It must be set at build time, because Next bakes the forwarding into the build. From `er-priority/frontend`:
+**App (Vercel).** `er-priority/frontend/vercel.json` selects Next.js, installs with `npm ci`, and builds with `npm run build` so Switzer is downloaded before compilation. Set the Vercel root directory to `er-priority/frontend`. `ATRIA_API_URL` in `er-priority/frontend/next.config.ts` forwards `/api/*` to the API. It must be set at build time, because Next bakes the forwarding into the build. From `er-priority/frontend`:
 ```
 npx vercel login
 npx vercel link            # choose the existing project "atria-er" (ask to be added under Settings > Members)

@@ -14,7 +14,13 @@ type Props = {
 // Bed board: who is in each bed, and for a free bed, the next patient in the official
 // line (human priority, then check-in time). The nurse confirms every assignment.
 export default function BedBoard({ board, busy, onAssign, onDischarge }: Props) {
-    if (!board) return null;
+    if (!board) return (
+        <section className="dashboard-section bed-board bed-board-loading" aria-busy="true">
+            <div className="section-heading queue-heading">
+                <div><h2>Beds</h2><p>Loading bed availability…</p></div>
+            </div>
+        </section>
+    );
     const next = board.next_up;
     const firstFree = board.beds.find((b) => !b.occupant);
     return (

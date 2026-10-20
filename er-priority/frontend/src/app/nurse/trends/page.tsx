@@ -101,9 +101,9 @@ export default function TrendsPage() {
     }, []);
 
     useEffect(() => {
-        refresh();
+        const first = setTimeout(refresh, 0);
         const id = setInterval(refresh, 5000);
-        return () => clearInterval(id);
+        return () => { clearTimeout(first); clearInterval(id); };
     }, [refresh]);
 
     return (
