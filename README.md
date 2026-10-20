@@ -82,7 +82,7 @@ Live: app https://atria-er.vercel.app, API https://atria-api-lzin.onrender.com, 
 
 **API (Render).** `render.yaml` is a Render Blueprint: Docker build from `Dockerfile`, branch `main`, health check `/health`. Every push to `main` redeploys it. Secrets are set in the Render dashboard, never in git: `GEMINI_API_KEY`, `SENTRY_DSN`, `TIGER_DATABASE_URL`, `TIGER_PASSWORD`. The free plan sleeps after about 15 idle minutes, so open the site a couple of minutes before a demo.
 
-**App (Vercel).** No `vercel.json` is needed; Vercel detects Next.js. The only setting is `ATRIA_API_URL`, which `er-priority/frontend/next.config.ts` uses to forward `/api/*` to the API. It must be set at build time, because Next bakes the forwarding into the build. From `er-priority/frontend`:
+**App (Vercel).** `er-priority/frontend/vercel.json` selects Next.js, installs with `npm ci`, and builds with `npm run build` so Switzer is downloaded before compilation. Set the Vercel root directory to `er-priority/frontend`. `ATRIA_API_URL` in `er-priority/frontend/next.config.ts` forwards `/api/*` to the API. It must be set at build time, because Next bakes the forwarding into the build. From `er-priority/frontend`:
 ```
 npx vercel login
 npx vercel link            # choose the existing project "atria-er" (ask to be added under Settings > Members)

@@ -433,6 +433,9 @@ export default function ERAdminDashboard({ queue, error, refresh, onGoToIntake, 
                                                     {p.trajectory !== "stable" && p.trajectory !== "insufficient_data" && (
                                                         <span className="dashboard-patient">{p.reasons[0]}</span>
                                                     )}
+                                                    {p.reasons.filter((reason) => reason.startsWith("Patient-reported")).map((reason) => (
+                                                        <span className="dashboard-patient" key={reason}>{reason}</span>
+                                                    ))}
                                                 </td>
                                                 <td>
                                                     <span className={`priority-badge ${priorityClass(p.priority)}`}>

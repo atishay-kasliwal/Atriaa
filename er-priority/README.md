@@ -1,16 +1,21 @@
-# ER Priority (live waiting room frontend)
+# Atria application prototype
 
-Next.js app for patient check-in and the staff ER dashboard, backed by the Atria FastAPI service in `../backend`.
+The Next.js frontend is in `frontend/`. The FastAPI API is in `../backend/`.
+The public landing and waitlist are separate, in `../landing/`.
 
-```
+```sh
+cd frontend
 npm ci
-npm run dev   # http://localhost:3000
+npm run dev
 ```
 
-`/api/*` is proxied to `ATRIA_API_URL` (default `http://127.0.0.1:8001`). For a production build, set it before `npm run build`, because Next reads rewrites at build time.
+Start the API from the repository root with `./scripts/dev.sh` to run both
+services. The frontend forwards `/api/*` to `ATRIA_API_URL`, which defaults to
+`http://127.0.0.1:8001`. Set it before a production build.
 
-- `/` staff workspace: ER dashboard, patient intake, Ask Atria
-- `/checkin` patient check-in (phone / QR code)
-- `/status/<id>` the patient's ticket and place in line
+The home page lets visitors choose patient check-in or the nurse station.
+Patients use `/checkin` and `/status/<id>`. Staff use `/nurse` and its intake,
+assistant, trends, and nearby-department views.
 
-See the repo README for the full demo flow.
+See [the frontend guide](frontend/README.md) for fonts, verification, and Vercel
+configuration, and [the repository README](../README.md) for the synthetic demo.

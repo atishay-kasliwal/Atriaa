@@ -1,94 +1,11 @@
-"use client";
+import type { Metadata } from "next";
+import NurseShell from "@/components/NurseShell";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { NurseProvider, useNurse } from "../../lib/nurse";
-
-const NAV = [
-    { href: "/nurse", icon: "▤", label: "Waiting room" },
-    { href: "/nurse/ask", icon: "✦", label: "Ask Atria" },
-    { href: "/nurse/intake", icon: "＋", label: "Front-desk check-in" },
-    { href: "/nurse/trends", icon: "∿", label: "Vitals trends" },
-    { href: "/nurse/nearby", icon: "⌖", label: "Nearby ERs" },
-];
-
-const CRUMBS: Record<string, string> = {
-    "/nurse": "Waiting room",
-    "/nurse/ask": "Ask Atria",
-    "/nurse/intake": "Front-desk check-in",
-    "/nurse/trends": "Vitals trends",
-    "/nurse/nearby": "Nearby ERs",
+export const metadata: Metadata = {
+  title: "Nurse station",
+  description: "Review the synthetic waiting room, record re-checks, and manage reassessment alerts in the Atria prototype.",
 };
 
-function Shell({ children }: { children: React.ReactNode }) {
-    const pathname = usePathname();
-    const { queue, error } = useNurse();
-    const count = (href: string) =>
-        href === "/nurse" ? queue?.waiting : href === "/nurse/ask" ? queue?.alerts || undefined : undefined;
-
-    return (
-        <main className="app-shell">
-            <aside className="sidebar">
-                <Link href="/" className="brand brand-link">
-                    <div className="brand-mark">+</div>
-                    <div>
-                        <div className="brand-name">ER Priority</div>
-                        <div className="brand-subtitle">Nurse station</div>
-                    </div>
-                </Link>
-
-                <div className="nav-label">NURSE STATION</div>
-                {NAV.map((item) => {
-                    const n = count(item.href);
-                    return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            className={`nav-item ${pathname === item.href ? "active" : ""}`}
-                        >
-                            <span className="nav-icon">{item.icon}</span>
-                            {item.label}
-                            {n !== undefined && <span className="nav-count">{n}</span>}
-                        </Link>
-                    );
-                })}
-
-                <div className="sidebar-bottom">
-                    <div className={`sidebar-indicator ${error ? "offline" : ""}`} />
-                    <div>
-                        <strong>{error ? "Connection lost" : "Live"}</strong>
-                    </div>
-                </div>
-            </aside>
-
-            <section className="main-panel">
-                <header className="topbar">
-                    <div className="breadcrumb">
-                        Nurse station <span>/</span> {CRUMBS[pathname] ?? ""}
-                    </div>
-                    <div className="top-status">
-                        <span className={`status-dot ${error ? "offline" : ""}`} />
-                        {error ? "Reconnecting…" : "Live"}
-                    </div>
-                </header>
-
-                <div className="content">
-                    {children}
-
-                    <footer>
-                        <span>ER Priority with Atria</span>
-                        <span>Not for clinical use</span>
-                    </footer>
-                </div>
-            </section>
-        </main>
-    );
-}
-
 export default function NurseLayout({ children }: { children: React.ReactNode }) {
-    return (
-        <NurseProvider>
-            <Shell>{children}</Shell>
-        </NurseProvider>
-    );
+  return <NurseShell>{children}</NurseShell>;
 }

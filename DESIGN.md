@@ -121,10 +121,8 @@ Switzer is fetched directly from Fontshare at build time for the site's own use;
 font binaries are not redistributed through the source repository. The waitlist
 is a separate Cloudflare D1 store with explicit consent and durable confirmation.
 
-This release covers `landing/` only. The separate Next.js engine work in
-`er-priority/frontend` remains local because its font paths, CSS imports, and
-engine exports currently fail production compilation. Product-engine repair is
-not required to publish this standalone landing page.
+The landing deployment is independent of the Next.js application. The application
+finish is documented below and in `er-priority/frontend/README.md`.
 
 See `landing/REVIEW.md` for the browser checks and evidence-based release review.
 
@@ -139,3 +137,26 @@ small inline-link targets, weak hover feedback, and a rotated pulse symbol on
 phones. These were corrected. The flow now includes the repository's synthetic
 Bay 4 baseline/current values (HR 92 to 121, SpO2 98 to 91, pain 4 to 7). These
 are illustrative demo readings, not outcomes or a real patient record.
+
+
+## Application finish
+
+The Next.js application now shares the landing's Switzer family, clinical slate
+surfaces, dark text, and deep blue actions. Existing patient and nurse workflows
+remain the composition: a compact navigation rail, queue, bed board, intake, and
+phone ticket. At phone width the navigation becomes an explicit horizontal strip;
+wide clinical tables scroll within their own container.
+
+Native navigation and scrolling are deliberate. There is no blocking loader,
+canvas, custom cursor, fabricated loading percentage, or looping background.
+A 350 ms heading movement supplies a small entry cue, is reverted on route change,
+and turns off under reduced motion. The application stays still between real
+data updates so clinical information retains attention. Hover, press, keyboard
+focus, and selected controls have explicit feedback.
+
+The unsupported case-study content and its invented test outcomes were removed.
+The application remains labeled as a synthetic prototype. Ask Atria requests
+current evidence on demand instead of prefetching and retaining old answers.
+The assistant's provider and fallback notice are visible. Tickets and staff
+workspaces are intentionally excluded from search indexing; the public landing
+is the discovery surface.

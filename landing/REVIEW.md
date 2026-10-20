@@ -107,10 +107,11 @@ GitHub automatic deployment remains gated on its documented dedicated Cloudflare
 token and account variables. The production configuration, DNS attachment, and
 manual deployment are complete.
 
-The separate uncommitted Next.js application-engine changes remain local. They
-currently fail a production build due to missing font files, incorrect CSS paths,
-and missing engine exports, so they are excluded from this landing-only release.
-No clinical application or backend change is included in the release commit.
+At the time of this landing release, the separate Next.js application-engine
+changes remained local. They failed production compilation due to missing fonts,
+incorrect CSS paths, and missing engine exports, and were excluded from that
+landing-only release commit. The subsequent application finish is documented
+in the application README.
 
 The page's motion is deliberately quiet: native scrolling, no loading curtain,
 no custom cursor, no WebGL requirement, and no blocking page transition. The
@@ -155,3 +156,5 @@ separate Worker browser tests and deployed signup verification do. The published
 Worker returned HTTP 200 with no browser errors or failed asset requests; two
 submissions of one synthetic address created exactly one D1 record. That test
 record was removed afterward.
+
+The subsequent application finish is documented in `../er-priority/frontend/README.md`; its checks are separate from this landing review.

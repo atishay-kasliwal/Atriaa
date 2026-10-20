@@ -1,2 +1,11 @@
 .vercel
 .env*
+.next/
+out/
+*.tsbuildinfo
+
+.qa/
+.shots/
+test-results/
+playwright-report/
+public/fonts/

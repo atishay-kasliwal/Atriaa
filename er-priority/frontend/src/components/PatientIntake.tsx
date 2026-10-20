@@ -164,9 +164,9 @@ export default function PatientIntake({variant = "patient"}: PatientIntakeProps)
                             ))}
                         </div>
                         <div className="pain-ends">
-                            <span>No pain</span>
-                            <span>Moderate</span>
-                            <span>Worst possible</span>
+                            <span>0: No pain</span>
+                            <span>4 to 6: Moderate</span>
+                            <span>10: Worst possible</span>
                         </div>
                     </div>
 
