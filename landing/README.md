@@ -38,6 +38,9 @@ npx wrangler deploy --dry-run
 The browser suite runs a Worker on port 8791 (override with `ATRIA_TEST_PORT`)
 and tests desktop/mobile layouts, keyboard menu behavior,
 successful signup, failed signup, privacy navigation, and 404 handling. For an
+additional contrast regression it checks all three pages at desktop and phone
+widths under both light and dark system preferences. The landing deliberately
+keeps one readable light palette. For an
 installed Google Chrome, use `PLAYWRIGHT_CHANNEL=chrome npm run test:browser`.
 
 ## Hosting

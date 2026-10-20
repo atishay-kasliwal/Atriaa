@@ -1,4 +1,28 @@
 import { test, expect } from "@playwright/test";
+import axe from "axe-core";
+
+for (const colorScheme of ["light", "dark"]) {
+  test(`text stays readable with the system set to ${colorScheme}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme, reducedMotion: "reduce" });
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      for (const route of ["/", "/privacy", "/not-a-real-page"]) {
+        await page.goto(route);
+        await page.evaluate(axe.source);
+        const violations = await page.evaluate(async () => {
+          const result = await axe.run(document, {
+            runOnly: { type: "rule", values: ["color-contrast"] },
+          });
+          return result.violations.map(({ id, nodes }) => ({
+            id,
+            targets: nodes.map(({ target, failureSummary }) => ({ target, failureSummary })),
+          }));
+        });
+        expect(violations, `${route} at ${width}px with ${colorScheme} preference`).toEqual([]);
+      }
+    }
+  });
+}
 
 test("landing and waitlist work at desktop and mobile widths", async ({
   page,

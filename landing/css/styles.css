@@ -182,7 +182,7 @@
   gap: 14px;
   padding: 12px 14px;
   border: 1px solid var(--color-line);
-  background: #fff;
+  background: var(--color-surface);
 }
 .input-symbol {
   display: grid;
@@ -306,7 +306,7 @@
   text-align: right;
 }
 .story {
-  background: #edf3f8;
+  background: var(--color-surface-soft);
   border-block: 1px solid var(--color-line);
 }
 .story-grid {
@@ -392,7 +392,7 @@
 }
 .signup-card {
   border: 1px solid var(--color-line);
-  background: #fff;
+  background: var(--color-surface);
   padding: 30px;
   min-height: 500px;
 }
@@ -420,15 +420,16 @@
 .signup-card select {
   width: 100%;
   height: 46px;
-  border: 1px solid #bfcbd8;
-  background: #fff;
+  border: 1px solid var(--color-control-border);
+  background: var(--color-surface);
   border-radius: 4px;
   padding: 10px 12px;
   font-size: 14px;
   color: var(--color-ink);
 }
 .signup-card input::placeholder {
-  color: #687b8b;
+  color: var(--color-muted);
+  opacity: 1;
 }
 .form-pair {
   display: grid;

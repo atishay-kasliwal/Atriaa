@@ -29,10 +29,11 @@ Anchor:      The name "Atria" comes from anatomy (heart chambers), making this c
 ## Art Direction System
 **Palette:**
 - Ground: #f8fafc (slate-50) - background, clean clinical feel
-- Ink: #1e293b (slate-800) - primary text, excellent readability
-- Muted: #64748b (slate-500) - secondary text, good contrast on ground
+- Ink: #0f172a (slate-900) - primary text
+- Muted: #475569 (slate-600) - readable secondary text and small labels
 - Line: #e2e8f0 (slate-200) - borders/dividers, subtle but visible
 - Accent: #0ea5e9 (sky-500) - highlights changes and important data, clinical blue
+- Action: #075985 (sky-800) - readable links and button backgrounds
 - Curtain: #0f172a (slate-900) - overlays/focused areas
 
 **Type:**
@@ -126,6 +127,12 @@ engine exports currently fail production compilation. Product-engine repair is
 not required to publish this standalone landing page.
 
 See `landing/REVIEW.md` for the browser checks and evidence-based release review.
+
+The landing intentionally uses one light color scheme under both light and dark
+system preferences. The earlier automatic dark override inverted text without
+inverting white cards and fields. Removing that partial theme keeps every text
+and surface pair consistent. Primary and secondary text are dark slate; blue
+text uses the deeper action shade. Layout and motion remain as reviewed.
 
 The first independent review identified a low-contrast 404 recovery button,
 small inline-link targets, weak hover feedback, and a rotated pulse symbol on

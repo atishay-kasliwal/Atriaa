@@ -22,8 +22,9 @@ CI. The clinical slate/blue direction and Switzer typeface are preserved.
 
 - Eight unit tests cover validation, persistence confirmation, storage failure,
   origin/method/content-type controls, body-size bounds, rate limiting, and routing.
-- Five browser tests cover responsive signup, mobile keyboard menu, failed writes,
-  privacy/404 navigation, reduced motion, and readable content without JavaScript.
+- Seven browser tests cover responsive signup, mobile keyboard menu, failed writes,
+  privacy/404 navigation, reduced motion, readable content without JavaScript, and
+  text contrast under light and dark system preferences on desktop and phone.
 - Production assets were served at `127.0.0.1:4400` for independent visual QA.
   Form/CSP checks used the actual local Cloudflare Worker on port 8792.
 - Two visual passes cover home, privacy, and 404 on desktop, a throttled 390px
@@ -33,7 +34,7 @@ CI. The clinical slate/blue direction and Switzer typeface are preserved.
 - Browser coverage is Chromium/Chrome and mobile emulation, not a physical-device
   or Safari/Firefox certification. Metrics are local lab measurements.
 
-## Final measured results
+## Original launch measured results (light system setting)
 
 | Page | Throttled mobile LCP | CLS | Mobile scroll FPS | Axe violations | Overflow / hidden reduced-motion text |
 |---|---:|---:|---:|---:|---|
@@ -46,6 +47,26 @@ response, and zero undersized mobile targets in the sampled controls. `colorOnly
 leads were checked against the screenshots: they are whole-link background fills,
 not text-color-only feedback. Raw compact results are in `review/summary.json`
 and `review/audit.txt`; full local evidence is under ignored `.jury/pass-2/`.
+
+## Contrast correction after launch
+
+The original review missed the system dark-mode case. A fresh audit of the
+published page found **43 failing text nodes**: the partial dark theme changed
+inherited text to near-white while cards and fields retained white backgrounds.
+
+The corrected palette stays light under both system preferences. Text uses dark
+slate (`#0f172a`), secondary labels use `#475569`, and text links/buttons use deep
+blue (`#075985`). Inputs, placeholders, and pending buttons retain readable text.
+The layout is unchanged. The primary text is approximately 17:1 against the page,
+secondary text exceeds 6:1 on the used light surfaces, and button labels exceed 7:1.
+
+Two new browser regressions run axe color-contrast checks on home, privacy, and
+404 at 1440px and 390px, each under light and dark system preferences. All twelve
+page/viewport/preference combinations pass with zero contrast violations. The
+seven browser tests and eight unit tests pass. Before/after form screenshots
+were also inspected; evidence is under ignored `.wrangler/contrast-before/` and
+`.wrangler/contrast-after/`. The earlier visual scores apply to the light setting
+reviewed at launch, not the broken automatic dark theme.
 
 ## SEO report dispositions
 

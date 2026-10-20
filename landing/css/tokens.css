@@ -33,13 +33,21 @@
 
 /* Color Palette */
 :root {
+  /* Keep text, native controls, and surfaces on one intentional light palette. */
+  color-scheme: only light;
   /* Clinical slate palette with blue accent */
   --color-ground: #f8fafc; /* Light slate - background */
   --color-ink: #0f172a; /* Dark slate - primary text */
-  --color-muted: #64748b; /* Medium slate - secondary text */
+  --color-muted: #475569; /* Readable secondary text, including small labels */
   --color-line: #e2e8f0; /* Stroke color */
   --color-accent: #0ea5e9; /* Blue accent - interactive elements */
   --color-curtain: #0f172a; /* For transitions/overlays */
+  --color-surface: #ffffff;
+  --color-surface-soft: #edf3f8;
+  --color-action: #075985;
+  --color-action-hover: #0c4a6e;
+  --color-on-action: #ffffff;
+  --color-control-border: #738397;
 
   /* Semantic color roles */
   --color-background: var(--color-ground);
@@ -65,8 +73,8 @@
 /* Typography - Switzer neo-grotesk family */
 :root {
   /* Font families */
-  --font-display: "Switzer Display", system-ui, sans-serif;
-  --font-text: "Switzer Text", system-ui, sans-serif;
+  --font-display: "Switzer", system-ui, sans-serif;
+  --font-text: "Switzer", system-ui, sans-serif;
 
   /* Fluid type scale */
   --type-scale-0: 0.75rem; /* 12px */
@@ -209,18 +217,6 @@
   top: 0;
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-ground: #0f172a;
-    --color-ink: #f8fafc;
-    --color-muted: #94a3b8;
-    --color-line: #334155;
-    --color-accent: #38bdf8;
-    --color-curtain: #0f172a;
-  }
-}
-
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   :root {
@@ -235,10 +231,4 @@
     animation-duration: 0ms !important;
     transition-duration: 0ms !important;
   }
-}
-:root {
-  --font-display: "Switzer", system-ui, sans-serif;
-  --font-text: "Switzer", system-ui, sans-serif;
-  --color-action: #0369a1;
-  --color-muted: #586a80;
 }
