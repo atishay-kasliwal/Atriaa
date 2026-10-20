@@ -1,0 +1,251 @@
+/* Shared foundation. Content is visible even when JavaScript is unavailable. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 90px;
+}
+body {
+  margin: 0;
+  font: 400 17px/1.6 var(--font-text);
+  background: var(--color-ground);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}
+h1,
+h2,
+h3,
+p,
+figure {
+  margin: 0;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  line-height: 1.12;
+}
+a {
+  color: inherit;
+  text-decoration: none;
+}
+button,
+input,
+select {
+  font: inherit;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+a,
+button,
+input,
+select {
+  -webkit-tap-highlight-color: transparent;
+}
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--color-action);
+  outline-offset: 4px;
+}
+[hidden] {
+  display: none !important;
+}
+.container {
+  width: min(1240px, calc(100% - 96px));
+  margin-inline: auto;
+}
+.section {
+  padding-block: 112px;
+}
+#main:focus {
+  outline: none;
+}
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 20px;
+  background: var(--color-ink);
+  color: #fff;
+  padding: 12px 18px;
+  z-index: 100;
+}
+.skip-link:focus {
+  top: 12px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
+  min-height: 52px;
+  padding: 13px 21px;
+  background: var(--color-action);
+  border: 1px solid var(--color-action);
+  border-radius: var(--radius-interactive);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    translate 220ms var(--ease-soft),
+    box-shadow 220ms,
+    background 220ms;
+}
+.btn:hover {
+  translate: 0 -3px;
+  background: #075985;
+  box-shadow: 0 7px 18px #0369a11c;
+}
+.btn:active {
+  translate: 0 0;
+  box-shadow: none;
+}
+.btn > span:last-child {
+  font-size: 19px;
+  line-height: 1;
+}
+.btn-outline {
+  background: transparent;
+  color: var(--color-action);
+}
+.btn-outline:hover {
+  background: #e0f2fe;
+  color: #075985;
+}
+.btn-small {
+  min-height: 44px;
+  padding: 10px 15px;
+  gap: 19px;
+  font-size: 13px;
+}
+.text-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 25px;
+  min-height: 32px;
+  font-size: 15px;
+  font-weight: 500;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 4px;
+  transition: gap 0.2s;
+}
+.text-link:hover {
+  gap: 35px;
+}
+.section-kicker {
+  font-size: 11px;
+  letter-spacing: 0.13em;
+  line-height: 1.7;
+  font-weight: 600;
+  color: var(--color-muted);
+}
+.section-heading h2,
+.signup-copy h2 {
+  font-size: clamp(36px, 4.3vw, 54px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.12;
+  margin-top: 20px;
+}
+.section-heading h2 span,
+.signup-copy h2 span {
+  color: var(--color-action);
+}
+.section-heading > p:last-child {
+  max-width: 550px;
+  color: var(--color-muted);
+  margin-top: 23px;
+  line-height: 1.7;
+}
+.privacy {
+  max-width: 760px;
+  padding-block: 64px 100px;
+}
+.privacy h1 {
+  font-size: clamp(36px, 5vw, 56px);
+  letter-spacing: -0.04em;
+  margin-block: 16px 24px;
+}
+.privacy h2 {
+  font-size: 25px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 35px 0 14px;
+}
+.privacy p {
+  color: var(--color-muted);
+  line-height: 1.8;
+}
+.privacy a {
+  color: var(--color-action);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.privacy .back-link {
+  display: inline-block;
+  margin-top: 30px;
+  min-height: 30px;
+}
+@media (max-width: 900px) {
+  .container {
+    width: calc(100% - 56px);
+  }
+  .section {
+    padding-block: 80px;
+  }
+}
+@media (max-width: 600px) {
+  .container {
+    width: calc(100% - 40px);
+  }
+  .section {
+    padding-block: 64px;
+  }
+  body {
+    font-size: 16px;
+  }
+  .section-heading h2,
+  .signup-copy h2 {
+    font-size: 35px;
+  }
+  .section-kicker {
+    font-size: 10px;
+  }
+  .privacy {
+    padding-block: 45px 65px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .btn:hover {
+    translate: none;
+  }
+}
+/* Keyboard focus must land immediately, even across long anchor distances. */
+html:has(:focus-visible) {
+  scroll-behavior: auto;
+}

@@ -1,4 +1,31 @@
-# ER Priority with Atria
+# Atria by Atriveo
+
+**See what changes while patients wait.**
+
+Atria is an Atriveo project that began at
+[MLH's Hacktoberfest Hacks @ All Things Open](https://www.mlh.com/events/hacktoberfest-hacks-all-things-open),
+where it won **Best Use of Tiger Data**.
+
+The public landing page and early-access waitlist are in [`landing/`](landing/README.md),
+published at [the Cloudflare preview](https://atria-landing.s6-backend-spike.workers.dev)
+and prepared for **atria.atriveo.com** (custom domain pending Cloudflare zone access).
+The landing page has its
+own D1 signup database and links to the existing working prototype. Signup does
+not create a clinical-product account.
+
+| Component | Source | Hosting |
+|---|---|---|
+| Landing + early-access waitlist | `landing/` | Cloudflare Workers + D1 |
+| Interactive product prototype | `er-priority/frontend/` | Vercel |
+| Product API | `backend/` | Render |
+| Patient history and application data | `tiger/` | Tiger Data |
+
+For landing setup, custom-domain attachment, GitHub deployment, and managing
+signups, see the [landing deployment guide](landing/README.md). The checked-in
+[GitHub workflow](.github/workflows/landing.yml) runs landing checks; deployment
+is enabled only after adding the Cloudflare account configuration and scoped token.
+
+## ER Priority prototype
 
 **See who's getting worse while they wait.** Triage happens once, at the door. Atria keeps watching after that: patients check in on their phone, nurses set priority and record re-checks, and Atria flags anyone whose readings worsen on every check, so a nurse can act. All patients are made up. Not a medical device.
 
