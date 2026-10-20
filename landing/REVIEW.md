@@ -98,8 +98,11 @@ does not establish indexing, rankings, traffic, or clinical effectiveness.
 
 The landing is deployed as Worker `atria-landing` with its existing D1 database,
 so existing signup rows are preserved. Deployment uses the connected account;
-`atria.atriveo.com` remains pending access to the account that owns that zone
-(the current zone request returns HTTP 403). GitHub automatic deployment remains
+`atria.atriveo.com` remains pending migration of Atria’s Worker and D1 to the
+account that owns that zone. The owner has now authorized that account and the
+main Atriveo hub is updated; the original Atria preview/database are in a
+different account, so their records must be preserved during a future move.
+GitHub automatic deployment remains
 gated on its documented dedicated Cloudflare token and account variables.
 
 The separate uncommitted Next.js application-engine changes remain local. They

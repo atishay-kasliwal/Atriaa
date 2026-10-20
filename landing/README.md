@@ -4,10 +4,11 @@ Cloudflare preview: **https://atria-landing.s6-backend-spike.workers.dev**.
 
 Public destination: **https://atria.atriveo.com**. The custom domain must be attached
 from the Cloudflare account that owns the `atriveo.com` zone; it is not activated
-just by checking in a configuration file. The preview is deployed; the current
-Cloudflare login cannot access the `atriveo.com` zone, so the custom domain is
-pending access to its owning account. GitHub automatic deployment is also
-pending the dedicated token described below.
+just by checking in a configuration file. The preview is deployed in the original Cloudflare account. The `atriveo.com`
+zone is now accessible in its owning account, which serves the updated Atriveo
+hub. Atria’s Worker and D1 database are still in a different account; activating
+the custom domain requires moving them while preserving the existing signups.
+GitHub automatic deployment is also pending the dedicated token described below.
 
 This directory contains a standalone landing page, a durable email waitlist, and
 the Cloudflare Worker that serves them. It links to the existing product demo at
@@ -37,8 +38,8 @@ npx wrangler deploy --dry-run
 
 The browser suite runs a Worker on port 8791 (override with `ATRIA_TEST_PORT`)
 and tests desktop/mobile layouts, keyboard menu behavior,
-successful signup, failed signup, privacy navigation, and 404 handling. For an
-additional contrast regression it checks all three pages at desktop and phone
+successful signup, failed signup, privacy navigation, and 404 handling.
+Additional contrast regressions check all three pages at desktop and phone
 widths under both light and dark system preferences. The landing deliberately
 keeps one readable light palette. For an
 installed Google Chrome, use `PLAYWRIGHT_CHANNEL=chrome npm run test:browser`.
