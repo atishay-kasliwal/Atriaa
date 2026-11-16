@@ -1,4 +1,8 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { site } from "@/data/site";
+
+export const metadata: Metadata = { alternates: { canonical: site.url } };
 
 const STEPS = [
     { n: "1", title: "Patient checks in", body: "On their phone or at the front desk: symptoms and a pain score." },
@@ -9,15 +13,16 @@ const STEPS = [
 
 export default function Home() {
     return (
-        <main className="home">
+        <main id="main" tabIndex={-1} className="home">
             <header className="home-top">
-                <div className="patient-brand">
+                <Link href="/" className="patient-brand brand-link">
                     <div className="brand-mark">+</div>
                     <div>
-                        <div className="patient-brand-name">ER Priority</div>
-                        <div className="dashboard-patient">with Atria reassessment</div>
+                        <div className="patient-brand-name">Atria</div>
+                        <div className="dashboard-patient">Waiting room prototype</div>
                     </div>
-                </div>
+                </Link>
+                <a href={site.landingUrl}>About Atria</a>
             </header>
 
             <section className="home-hero">

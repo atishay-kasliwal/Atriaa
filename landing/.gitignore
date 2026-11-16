@@ -1,0 +1,10 @@
+node_modules/
+.wrangler/
+.dev.vars*
+.env*
+!.env.example
+test-results/
+playwright-report/
+dist/
+.jury/
+public/fonts/*.woff2

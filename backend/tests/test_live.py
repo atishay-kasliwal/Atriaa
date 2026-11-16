@@ -93,6 +93,17 @@ def test_live_ask_uses_priority_labels(live):
     assert "W-01" in out["answer"] and out["queue_version"].startswith("live@")
 
 
+@pytest.mark.parametrize("question", [
+    "Who changed most since check-in?",
+    "Who should be re-checked next?",
+])
+def test_live_ask_handles_an_empty_waiting_room(live, question):
+    response = live.post("/live/ask", json={"question": question})
+    assert response.status_code == 200
+    assert response.json()["provider"] == "fallback"
+    assert "No patients" in response.json()["answer"]
+
+
 def test_validation(live):
     assert live.post("/checkin", json={"name": "X", "symptoms": []}).status_code == 422
     assert live.post("/checkin", json={"name": "X", "symptoms": ["Cough"], "pain": 11}).status_code == 422

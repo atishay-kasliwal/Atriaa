@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Atria | See what changes while patients wait</title>
+    <meta
+      name="description"
+      content="Atria connects patient updates, changing readings, and nurse reassessment. Explore the Tiger Data hackathon winner and join early access."
+    />
+    <meta name="theme-color" content="#f8fafc" />
+    <link rel="icon" type="image/svg+xml" href="/mark.svg" />
+    <link
+      rel="canonical"
+      href="https://atria.atriveo.com/"
+    />
+    <meta
+      property="og:title"
+      content="Atria | The wait shouldn’t be a blind spot."
+    />
+    <meta
+      property="og:description"
+      content="Patient updates, changing readings, and human review. A Best Use of Tiger Data winner, now an Atriveo project."
+    />
+    <meta
+      property="og:image"
+      content="https://atria.atriveo.com/og.png"
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://atria.atriveo.com/"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link
+      rel="preload"
+      href="/fonts/switzer-400-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/switzer-600-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/css/tokens.css" />
+    <link rel="stylesheet" href="/css/engine.css" />
+    <link rel="stylesheet" href="/css/styles.css" />
+    <script src="/js/site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="/" aria-label="Atria home"
+          ><img src="/mark.svg" width="34" height="34" alt="" /><span
+            >atria<span class="brand-period">.</span></span
+          ></a
+        >
+        <a class="parent-brand" href="https://atriveo.com"
+          >An Atriveo project ↗</a
+        >
+        <nav class="desktop-nav" aria-label="Main navigation">
+          <a href="#how-it-works">How it works</a
+          ><a href="#our-story">Our story</a
+          ><a class="btn btn-small" href="#early-access"
+            >Join early access <span aria-hidden="true">↗</span></a
+          >
+        </nav>
+        <button
+          class="menu-toggle"
+          id="menu-btn"
+          aria-controls="mobile-menu"
+          aria-expanded="false"
+          aria-label="Open menu"
+        >
+          <span aria-hidden="true">☰</span>
+        </button>
+      </div>
+      <nav
+        id="mobile-menu"
+        class="mobile-menu container"
+        aria-label="Mobile navigation"
+        hidden
+      >
+        <a href="#how-it-works">How it works</a
+        ><a href="#our-story">Our story</a
+        ><a href="#early-access">Join early access ↗</a>
+      </nav>
+    </header>
+    <main id="main" tabindex="-1">
+      <section class="hero container" aria-labelledby="hero-title">
+        <a class="award-label" href="#our-story"
+          ><span aria-hidden="true">✳</span> Best Use of Tiger Data
+          <span class="winner">WINNER</span
+          ><span aria-hidden="true">↗</span></a
+        >
+        <h1 id="hero-title">
+          The wait shouldn’t<br />be a <span>blind spot.</span>
+        </h1>
+        <p class="hero-description">
+          A patient’s condition can change after check-in. Atria brings those
+          changes into view, so care teams can see who may need another look.
+        </p>
+        <div class="hero-actions">
+          <a class="btn" href="#early-access"
+            >Get early access <span aria-hidden="true">↗</span></a
+          ><a class="btn btn-outline" href="https://atria-er.vercel.app/nurse"
+            >Explore the demo <span aria-hidden="true">→</span></a
+          >
+        </div>
+        <p class="hero-note">In development. Built around human review.</p>
+        <figure class="flow-figure" aria-labelledby="flow-caption">
+          <div class="figure-heading">
+            <span>FROM PATIENT UPDATE TO HUMAN REVIEW</span
+            ><span class="figure-demo"
+              ><span class="status-dot"></span> ILLUSTRATIVE FLOW</span
+            >
+          </div>
+          <div class="flow-layout">
+            <div class="flow-inputs">
+              <div>
+                <span class="input-symbol" aria-hidden="true">+</span
+                ><span
+                  ><strong>Patient updates</strong
+                  ><small>Symptoms & reported pain</small></span
+                >
+              </div>
+              <div>
+                <span class="input-symbol" aria-hidden="true">∿</span
+                ><span
+                  ><strong>Repeat readings</strong
+                  ><small>Heart rate & oxygen saturation</small></span
+                >
+              </div>
+              <div>
+                <span class="input-symbol" aria-hidden="true">↺</span
+                ><span
+                  ><strong>Earlier observations</strong
+                  ><small>Context across the wait</small></span
+                >
+              </div>
+            </div>
+            <div class="flow-center">
+              <svg
+                class="flow-lines"
+                viewBox="0 0 420 240"
+                fill="none"
+                aria-hidden="true"
+              >
+                <g stroke="#b9d6e8" stroke-width="1.5">
+                  <path
+                    data-flow-path
+                    d="M0 30C110 30 110 120 210 120S320 120 420 120"
+                  />
+                  <path data-flow-path d="M0 120H420" />
+                  <path
+                    data-flow-path
+                    d="M0 210C110 210 110 120 210 120S320 120 420 120"
+                  />
+                </g>
+                <circle
+                  data-pulse-halo
+                  cx="210"
+                  cy="120"
+                  r="53"
+                  fill="#0ea5e9"
+                  opacity=".2"
+                />
+                <circle
+                  cx="210"
+                  cy="120"
+                  r="39"
+                  fill="#f8fafc"
+                  stroke="#0ea5e9"
+                />
+                <path
+                  d="M183 120h15l7-15 11 30 7-15h14"
+                  stroke="#0369a1"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <g fill="#0284c7">
+                  <circle data-flow-dot cx="30" cy="31" r="4" />
+                  <circle data-flow-dot cx="290" cy="120" r="4" />
+                  <circle data-flow-dot cx="110" cy="190" r="4" />
+                </g></svg
+              ><span class="flow-center-label">Atria connects the changes</span>
+            </div>
+            <div class="flow-output">
+              <span class="output-label">FOR THE NURSE</span
+              ><strong>Another look, <br />with a reason.</strong>
+              <p>
+                See the trend, inspect the evidence, and decide on reassessment.
+              </p>
+              <span class="human-tag"
+                ><span aria-hidden="true">✓</span> Priority stays a human
+                decision</span
+              >
+            </div>
+          </div>
+          <div class="reading-example">
+            <p>
+              FROM THE SYNTHETIC DEMO<br /><strong
+                >Check-in → latest reading</strong
+              >
+            </p>
+            <dl>
+              <div>
+                <dt>Heart rate</dt>
+                <dd>92 → 121 <small>bpm</small></dd>
+              </div>
+              <div>
+                <dt>Oxygen saturation</dt>
+                <dd>98 → 91 <small>%</small></dd>
+              </div>
+              <div>
+                <dt>Reported pain</dt>
+                <dd>4 → 7 <small>/ 10</small></dd>
+              </div>
+            </dl>
+          </div>
+          <figcaption id="flow-caption">
+            A conceptual workflow using synthetic examples. Readings are entered
+            by patients and care teams; this prototype is not a bedside monitor.
+          </figcaption>
+        </figure>
+      </section>
+      <section
+        class="workflow container section"
+        id="how-it-works"
+        aria-labelledby="workflow-title"
+      >
+        <div class="section-heading">
+          <p class="section-kicker">A CONTINUOUS PICTURE</p>
+          <h2 id="workflow-title">
+            One check-in is a moment.<br />Care needs
+            <span>the whole story.</span>
+          </h2>
+          <p>
+            Atria connects what a patient reports with what the care team
+            observes. Every new reading adds context to the last.
+          </p>
+        </div>
+        <div class="workflow-list">
+          <article class="workflow-step">
+            <span class="step-number">01</span>
+            <h3>Hear the patient.</h3>
+            <p>
+              Check in, share symptoms, and send an update when something feels
+              different. Give patients a way to be heard while they wait.
+            </p>
+            <span class="step-key">Patient check-in & updates</span>
+          </article>
+          <article class="workflow-step">
+            <span class="step-number">02</span>
+            <h3>Notice what changes.</h3>
+            <p>
+              Bring repeat readings into a timeline. See the direction of
+              change, the underlying values, and why a signal appeared.
+            </p>
+            <span class="step-key">Trends with traceable evidence</span>
+          </article>
+          <article class="workflow-step">
+            <span class="step-number">03</span>
+            <h3>Keep people in control.</h3>
+            <p>
+              Nurses review the evidence, request a re-check, and decide on
+              priority. Atria supports that decision and records the action.
+            </p>
+            <span class="step-key">Human review at every step</span>
+          </article>
+        </div>
+      </section>
+      <section
+        class="story section"
+        id="our-story"
+        aria-labelledby="story-title"
+      >
+        <div class="container story-grid">
+          <div>
+            <p class="section-kicker">FROM A WEEKEND BUILD TO WHAT’S NEXT</p>
+            <h2 id="story-title">
+              What happens<br /><span>after triage?</span>
+            </h2>
+            <p class="story-lead">
+              The waiting room keeps changing, even when the queue looks the
+              same.
+            </p>
+          </div>
+          <div class="story-copy">
+            <p>
+              Built at MLH’s
+              <a
+                href="https://www.mlh.com/events/hacktoberfest-hacks-all-things-open"
+                >Hacktoberfest Hacks @ All Things Open</a
+              >, Atria connects patient check-in, repeat observations, a nurse’s
+              waiting-room view, and explanations grounded in actual readings.
+            </p>
+            <div class="award-badge">
+              <span aria-hidden="true">✳</span>
+              <div>
+                <strong>Winner · Best Use of Tiger Data</strong
+                ><span>Hacktoberfest Hacks @ All Things Open · 2026</span>
+              </div>
+            </div>
+            <p>
+              Tiger Data keeps patient history together. Gemini explains
+              retrieved evidence. Care teams make the decisions.
+            </p>
+            <p>
+              Now, as part of Atriveo, we’re learning from the people who work
+              in these rooms and shaping a product around their workflow.
+            </p>
+            <a class="text-link" href="https://atria-er.vercel.app/"
+              >Try the working prototype <span aria-hidden="true">↗</span></a
+            >
+          </div>
+        </div>
+      </section>
+      <section
+        class="signup-section container section"
+        id="early-access"
+        aria-labelledby="signup-title"
+      >
+        <div class="signup-copy">
+          <p class="section-kicker">HELP SHAPE WHAT’S NEXT</p>
+          <h2 id="signup-title">
+            A better view<br />starts with <span>you.</span>
+          </h2>
+          <p>
+            Work in care? Build health technology? Or just believe this should
+            exist? Join the early-access list.
+          </p>
+          <p class="signup-promise">
+            Product updates, invitations to try Atria, and a chance to share
+            what your team needs.
+          </p>
+        </div>
+        <div class="signup-card">
+          <form
+            id="signup-form"
+            action="/api/waitlist"
+            method="post"
+            aria-describedby="signup-note"
+          >
+            <h3>Be part of Atria’s next chapter.</h3>
+            <p class="form-hint">
+              Sign up for early access. No account needed yet.
+            </p>
+            <label for="signup-email">Email address</label
+            ><input
+              type="email"
+              id="signup-email"
+              name="email"
+              required
+              maxlength="254"
+              autocomplete="email"
+              placeholder="you@company.com"
+            />
+            <div class="form-pair">
+              <div>
+                <label for="signup-name"
+                  >Your name <span>(optional)</span></label
+                ><input
+                  type="text"
+                  id="signup-name"
+                  name="name"
+                  maxlength="100"
+                  autocomplete="name"
+                  placeholder="First name"
+                />
+              </div>
+              <div>
+                <label for="signup-role">I’m here as a…</label
+                ><select id="signup-role" name="role" required>
+                  <option value="" disabled selected>Select one</option>
+                  <option value="care-team">Care team member</option>
+                  <option value="builder">Builder / researcher</option>
+                  <option value="partner">Potential partner</option>
+                  <option value="other">Curious human</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-trap" aria-hidden="true">
+              <label for="signup-website">Website</label
+              ><input
+                type="text"
+                id="signup-website"
+                name="website"
+                tabindex="-1"
+                autocomplete="off"
+              />
+            </div>
+            <label class="consent"
+              ><input type="checkbox" name="consent" required /><span
+                >I’d like to receive Atria early-access updates.
+                <a href="/privacy">How we use your details</a></span
+              ></label
+            >
+            <button class="btn form-submit" type="submit">
+              <span>Join the early-access list</span
+              ><span aria-hidden="true">↗</span>
+            </button>
+            <p
+              class="form-status"
+              id="form-status"
+              role="status"
+              aria-live="polite"
+            ></p>
+            <p class="form-note" id="signup-note">
+              Please use this form for product interest only. Don’t include
+              patient or medical information.
+            </p>
+            <noscript
+              ><p>Please enable JavaScript to submit the form.</p></noscript
+            >
+          </form>
+          <div id="signup-success" class="success-panel" hidden tabindex="-1">
+            <span class="success-check" aria-hidden="true">✓</span>
+            <p class="section-kicker">YOU’RE ON THE LIST</p>
+            <h3>Thanks for being<br />here early.</h3>
+            <p>
+              We’ve saved your signup. We’ll use your email to share Atria
+              updates and early-access opportunities as the product develops.
+            </p>
+            <a class="text-link" href="https://atria-er.vercel.app/"
+              >Explore the prototype <span aria-hidden="true">→</span></a
+            >
+          </div>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-top">
+          <a class="footer-wordmark" href="/" aria-label="Atria home"
+            >atria<span>.</span></a
+          >
+          <p>See what changes<br />while patients wait.</p>
+          <nav aria-label="Footer navigation">
+            <a href="https://atriveo.com">Atriveo ↗</a
+            ><a href="https://github.com/atishay-kasliwal/Atriaa">GitHub ↗</a
+            ><a href="/privacy">Privacy</a>
+          </nav>
+        </div>
+        <div class="footer-bottom">
+          <p>
+            © 2026 Atria · An <a href="https://atriveo.com">Atriveo</a> project
+            by Atishay Kasliwal and collaborators.
+          </p>
+          <p>
+            Atria is a prototype, not a medical device. The demo uses synthetic
+            data and is not validated for clinical use.
+          </p>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

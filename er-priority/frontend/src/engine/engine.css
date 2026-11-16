@@ -1,0 +1,22 @@
+.skip-link {
+  position: fixed;
+  z-index: 100;
+  top: 8px;
+  left: 8px;
+  padding: 12px 18px;
+  background: var(--ink);
+  color: white;
+  border-radius: var(--radius-interactive);
+  transform: translateY(-160%);
+}
+.skip-link:focus { transform: translateY(0); }
+:focus-visible { outline: 3px solid var(--action); outline-offset: 3px; }
+.sidebar :focus-visible, .role-card-dark:focus-visible { outline-color: #7dd3fc; }
+.pain-option:has(input:focus-visible) { outline: 3px solid var(--action); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
